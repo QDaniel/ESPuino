@@ -13,7 +13,10 @@
     #include "settings-lolin_d32_pro.h"                 // Contains all user-relevant settings for Wemos Lolin D32 pro
 #endif
 
-#include <ESP32Encoder.h>
+#ifdef USEROTARY_ENABLE
+    #include <ESP32Encoder.h>
+#endif
+
 #include "Arduino.h"
 #include <WiFi.h>
 #ifdef MDNS_ENABLE
@@ -231,9 +234,13 @@ bool gotoSleep = false;                                 // Flag for turning uC i
 bool sleeping = false;                                  // Flag for turning into deepsleep is in progress
 bool lockControls = false;                              // Flag if buttons and rotary encoder is locked
 bool bootComplete = false;
-// Rotary encoder-helper
-int32_t lastEncoderValue;
-int32_t currentEncoderValue;
+
+#ifdef USEROTARY_ENABLE
+    // Rotary encoder-helper
+    int32_t lastEncoderValue;
+    int32_t currentEncoderValue;
+#endif
+
 int32_t lastVolume = -1;                                // Don't change -1 as initial-value!
 uint8_t currentVolume = initVolume;
 ////////////
@@ -313,8 +320,10 @@ IPAddress myIP;
     PubSubClient MQTTclient(wifiClient);
 #endif
 
-// Rotary encoder-configuration
-ESP32Encoder encoder;
+#ifdef USEROTARY_ENABLE
+    // Rotary encoder-configuration
+    ESP32Encoder encoder;
+#endif
 
 // HW-Timer
 hw_timer_t *timer = NULL;
@@ -517,7 +526,9 @@ void buttonHandler() {
         buttons[0].currentState = digitalRead(NEXT_BUTTON);
         buttons[1].currentState = digitalRead(PREVIOUS_BUTTON);
         buttons[2].currentState = digitalRead(PAUSEPLAY_BUTTON);
-        buttons[3].currentState = digitalRead(DREHENCODER_BUTTON);
+        #ifdef USEROTARY_ENABLE
+            buttons[3].currentState = digitalRead(DREHENCODER_BUTTON);
+        #endif
 
         // Iterate over all buttons in struct-array
         for (uint8_t i=0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
@@ -583,17 +594,29 @@ void doButtonActions(void) {
                     switch (i)      // Long-press-actions
                     {
                     case 0:
-                        trackControlToQueueSender(LASTTRACK);
+                        #ifdef USEROTARY_ENABLE
+                            trackControlToQueueSender(LASTTRACK);
+                        #else
+                            volumeToQueueSender(currentVolume - 1);
+                        #endif
                         buttons[i].isPressed = false;
                         break;
 
                     case 1:
-                        trackControlToQueueSender(FIRSTTRACK);
+                        #ifdef USEROTARY_ENABLE
+                            trackControlToQueueSender(FIRSTTRACK);
+                        #else
+                            volumeToQueueSender(currentVolume + 1);
+                        #endif
                         buttons[i].isPressed = false;
                         break;
 
                     case 2:
-                        trackControlToQueueSender(PAUSEPLAY);
+                        #ifdef USEROTARY_ENABLE
+                            trackControlToQueueSender(PAUSEPLAY);
+                        #else
+                            volumeToQueueSender(initVolume);
+                        #endif
                         buttons[i].isPressed = false;
                         break;
 
@@ -795,8 +818,10 @@ void callback(const char *topic, const byte *payload, uint32_t length) {
     else if (strcmp_P(topic, topicLoudnessCmnd) == 0) {
         unsigned long vol = strtoul(receivedString, NULL, 10);
         volumeToQueueSender(vol);
-        encoder.clearCount();
-        encoder.setCount(vol * 2);      // Update encoder-value to keep it in-sync with MQTT-updates
+        #ifdef USEROTARY_ENABLE
+            encoder.clearCount();
+            encoder.setCount(vol * 2);      // Update encoder-value to keep it in-sync with MQTT-updates
+        #endif
     }
     // Modify sleep-timer?
     else if (strcmp_P(topic, topicSleepTimerCmnd) == 0) {
@@ -1663,7 +1688,7 @@ void rfidScanner(void *parameter) {
                 continue;
             }
 
-            //mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+            mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
             mfrc522.PICC_HaltA();
             mfrc522.PCD_StopCrypto1();
 
@@ -2312,6 +2337,7 @@ void trackControlToQueueSender(const uint8_t trackCommand) {
 
 // Handles volume directed by rotary encoder
 void volumeHandler(const int32_t _minVolume, const int32_t _maxVolume) {
+#ifdef USEROTARY_ENABLE
     if (lockControls) {
         encoder.clearCount();
         encoder.setCount(currentVolume*2);
@@ -2340,6 +2366,7 @@ void volumeHandler(const int32_t _minVolume, const int32_t _maxVolume) {
             volumeToQueueSender(currentVolume);
         }
     }
+#endif
 }
 
 
@@ -3985,7 +4012,12 @@ void printWakeUpReason() {
 
 void setup() {
     Serial.begin(115200);
-    esp_sleep_enable_ext0_wakeup((gpio_num_t) DREHENCODER_BUTTON, 0);
+    #ifdef USEROTARY_ENABLE
+        esp_sleep_enable_ext0_wakeup((gpio_num_t) DREHENCODER_BUTTON, 0);
+    #else
+        esp_sleep_enable_ext0_wakeup((gpio_num_t) PAUSEPLAY_BUTTON, 0);
+    #endif
+
     #ifdef PN5180_ENABLE_LPCD
         // disable pin hold from deep sleep (LPCD)
         gpio_deep_sleep_hold_dis();
@@ -4410,15 +4442,19 @@ void setup() {
 
 
     // Activate internal pullups for all buttons
-    pinMode(DREHENCODER_BUTTON, INPUT_PULLUP);
+    
     pinMode(PAUSEPLAY_BUTTON, INPUT_PULLUP);
     pinMode(NEXT_BUTTON, INPUT_PULLUP);
     pinMode(PREVIOUS_BUTTON, INPUT_PULLUP);
 
-    // Init rotary encoder
-    encoder.attachHalfQuad(DREHENCODER_CLK, DREHENCODER_DT);
-    encoder.clearCount();
-    encoder.setCount(initVolume*2);         // Ganzes Raster ist immer +2, daher initiale Lautstärke mit 2 multiplizieren
+    #ifdef USEROTARY_ENABLE
+        pinMode(DREHENCODER_BUTTON, INPUT_PULLUP);
+
+        // Init rotary encoder
+        encoder.attachHalfQuad(DREHENCODER_CLK, DREHENCODER_DT);
+        encoder.clearCount();
+        encoder.setCount(initVolume*2);         // Ganzes Raster ist immer +2, daher initiale Lautstärke mit 2 multiplizieren
+    #endif
 
     // Only enable MQTT if requested
     #ifdef MQTT_ENABLE

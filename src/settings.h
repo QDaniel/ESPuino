@@ -30,6 +30,7 @@
 //#define USE_LAST_VOLUME_AFTER_REBOOT  // Remembers the volume used at last shutdown after reboot
 
 //#define BLUETOOTH_ENABLE          // Doesn't work currently (so don't enable) as there's not enough DRAM available
+#define USEROTARY_ENABLE             // Use Rotary encoder or Long press Buttons for Volume
 
 
 //################## select SD card mode #############################
