@@ -133,3 +133,9 @@ float voltageIndicatorHigh = 4.2;                   // Upper range for Neopixel-
         static const char topicBatteryVoltage[] PROGMEM = "State/ESPuino/Voltage";
     #endif
 #endif
+
+#if defined RFID_READER_TYPE_MFRC522_SPI || defined RFID_READER_TYPE_MFRC522_I2C
+    #define RFID_CARDMAN
+#endif
+
+#define CHUNK_SIZE 1024

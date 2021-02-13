@@ -77,6 +77,12 @@
 
 #include "freertos/ringbuf.h"
 
+#ifdef RFID_CARDMAN
+    #include <HTTPClient.h>
+    #include "cardman.h"
+    cardmanData cardData;
+
+#endif
 
 // Serial-logging buffer
 uint8_t serialLoglength = 200;
@@ -138,6 +144,10 @@ char *logBuf = (char*) calloc(serialLoglength, sizeof(char)); // Buffer for all 
 #define REPEAT_TRACK                    111         // Changes active playmode to endless-loop (for a single track)
 #define DIMM_LEDS_NIGHTMODE             120         // Changes LED-brightness
 #define TOGGLE_WIFI_STATUS              130         // Toggles WiFi-status
+
+#define CMD_PLAYPAUSE                   140         // Admin-Cmd Play/Pause
+#define CMD_PREV                        141         // Admin-Cmd Prev Track
+#define CMD_NEXT                        142         // Admin-Cmd Next Track
 
 // Repeat-Modes
 #define NO_REPEAT                       0           // No repeat
@@ -597,7 +607,7 @@ void doButtonActions(void) {
                         #ifdef USEROTARY_ENABLE
                             trackControlToQueueSender(LASTTRACK);
                         #else
-                            volumeToQueueSender(currentVolume - 1);
+                            volumeToQueueSender(currentVolume + 2);
                         #endif
                         buttons[i].isPressed = false;
                         break;
@@ -606,7 +616,7 @@ void doButtonActions(void) {
                         #ifdef USEROTARY_ENABLE
                             trackControlToQueueSender(FIRSTTRACK);
                         #else
-                            volumeToQueueSender(currentVolume + 1);
+                            volumeToQueueSender(currentVolume - 2);
                         #endif
                         buttons[i].isPressed = false;
                         break;
@@ -642,7 +652,7 @@ void doButtonActions(void) {
                         buttons[i].isPressed = false;
                         break;
 
-                    case 3:
+                    case 3: 
                         buttons[i].isPressed = false;
                         #ifdef MEASURE_BATTERY_VOLTAGE
                             float voltage = measureBatteryVoltage();
@@ -1287,20 +1297,22 @@ void playAudio(void *parameter) {
     static Audio audio;
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     audio.setVolume(initVolume);
+    currentVolume = initVolume;
+ 
 
-
-    uint8_t currentVolume;
+    uint8_t currVolume;
     static BaseType_t trackQStatus;
     static uint8_t trackCommand = 0;
     bool audioReturnCode;
 
     for (;;) {
-        if (xQueueReceive(volumeQueue, &currentVolume, 0) == pdPASS ) {
-            snprintf(logBuf, serialLoglength, "%s: %d", (char *) FPSTR(newLoudnessReceivedQueue), currentVolume);
+        if (xQueueReceive(volumeQueue, &currVolume, 0) == pdPASS ) {
+            snprintf(logBuf, serialLoglength, "%s: %d", (char *) FPSTR(newLoudnessReceivedQueue), currVolume);
             loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
-            audio.setVolume(currentVolume);
+            audio.setVolume(currVolume);
+            currentVolume = currVolume;
             #ifdef MQTT_ENABLE
-                publishMqtt((char *) FPSTR(topicLoudnessState), currentVolume, false);
+                publishMqtt((char *) FPSTR(topicLoudnessState), currVolume, false);
             #endif
         }
 
@@ -1687,8 +1699,13 @@ void rfidScanner(void *parameter) {
             if (!mfrc522.PICC_ReadCardSerial()) {
                 continue;
             }
+ 
+            #ifdef RFID_CARDMAN
+                cardData.cardType = 0;
+                cardman_filldata(&mfrc522, &cardData);
+            #endif
 
-            mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+            //mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
             mfrc522.PICC_HaltA();
             mfrc522.PCD_StopCrypto1();
 
@@ -1716,6 +1733,7 @@ void rfidScanner(void *parameter) {
                     logger(serialDebug, "\n", LOGLEVEL_NOTICE);
                 }
             }
+ 
             xQueueSend(rfidCardQueue, &cardIdString, 0);
 //            free(cardIdString);
         }
@@ -2910,6 +2928,16 @@ void doRfidCardModifications(const uint32_t mod) {
 
             break;
 
+        case CMD_PLAYPAUSE:
+            trackControlToQueueSender(PAUSEPLAY);
+            break;
+        case CMD_PREV:
+            trackControlToQueueSender(PREVIOUSTRACK);
+            break;
+        case CMD_NEXT:
+            trackControlToQueueSender(NEXTTRACK);
+            break;
+
         default:
             snprintf(logBuf, serialLoglength, "%s %d !", (char *) FPSTR(modificatorDoesNotExist), mod);
             loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
@@ -2918,6 +2946,110 @@ void doRfidCardModifications(const uint32_t mod) {
             #endif
     }
 }
+
+#ifdef RFID_CARDMAN
+TaskHandle_t dlTaskHandle = NULL;
+
+bool DownloadFile(HTTPClient* http,  const char* uri,  const char* path,  const char* temp) {
+    bool ret = true;
+    Serial.print("http uri: ");
+    Serial.print(uri);
+    Serial.print(" -> ");
+    Serial.println(path);
+    if(!FSystem.exists(path)) {
+        http->begin(uri);
+        int httpCode = http->GET();
+        Serial.print("http result: ");
+        Serial.println(httpCode);
+        if(httpCode == 200) {
+            File file = FSystem.open(temp, FILE_WRITE);
+
+            // ********************* DOWNLOAD PROCESS *********************
+            uint8_t data[CHUNK_SIZE];
+
+            const size_t TOTAL_SIZE = http->getSize();
+            Serial.print("TOTAL SIZE : ");
+            Serial.println(TOTAL_SIZE);
+            size_t downloadRemaining = TOTAL_SIZE;
+            Serial.println("Download START");
+            WiFiClient* stream = http->getStreamPtr();
+            auto start_ = millis();
+            size_t data_size;
+            while ( downloadRemaining > 0 && http->connected() ) {
+                data_size = stream->available();
+                if (data_size > 0) {
+                    auto read_count = stream->read(data, ((data_size > CHUNK_SIZE) ? CHUNK_SIZE : data_size));                    
+                    // If one chunk of data has been accumulated, write to SD card
+                    if (read_count > 0) 
+                    {
+                        downloadRemaining -= read_count;
+                        file.write(data, read_count);                   
+                    }
+                }
+                vTaskDelay(1);
+            }
+
+            size_t time_ = (millis() - start_) / 1000;
+            file.close();
+            Serial.println("Download END");
+            FSystem.rename(temp, path);
+            String speed_ = String(TOTAL_SIZE / time_);
+            Serial.println("Speed: " + speed_ + " bytes/sec");
+            ret = true;
+        } else {
+            Serial.print("HTTP Failed, Status: ");
+            Serial.println(httpCode);
+            ret = false;
+        }
+        http->end();
+    }
+    return ret;
+    
+}
+
+void DownloadUri(void * parameter) {
+    HTTPClient http;
+
+    char uri[255];
+    char buid[26];
+    char path[100];
+    char temp[50];
+    snprintf(buid, sizeof(buid), "/%s", cardData.uuid64);               
+    if(!FSystem.exists(buid)) FSystem.mkdir(buid);
+    snprintf(temp, sizeof(temp), "%s/download.tmp", buid);
+
+    if(cardData.cardType == 18) {
+        snprintf(path, sizeof(path), "%s.m3c", buid);
+        snprintf(uri, sizeof(uri), "%s", cardData.uri);
+        bool ret = false;
+        uint8_t track = 0;
+        ret = DownloadFile(&http, uri, path, temp);
+
+        if(ret) {
+            File cat = FSystem.open(path, FILE_READ);
+            size_t n;
+            while (ret && (n = cat.readBytesUntil('\n', uri, sizeof(uri)-1)) > 0) {
+                track++;
+                uri[n] = 0;
+                Serial.println(uri);
+                snprintf(path, sizeof(path), "%s/%03u.mp3", buid, track);
+                if(n>10 && !FSystem.exists(path)) {
+                   ret = DownloadFile(&http, uri, path, temp);          
+                }    
+            }      
+        }
+        snprintf(path, sizeof(path), "%s/", buid);
+        trackQueueDispatcher(path,0,cardData.playMode,0);
+    } else {
+        snprintf(path, sizeof(path), "%s/%03u.mp3", buid, cardData.trackNr);
+        DownloadFile(&http, cardData.uri, path, temp);
+        trackQueueDispatcher(path,0,cardData.playMode,0);
+    }
+
+    dlTaskHandle = NULL;
+    vTaskDelete(NULL);
+}
+#endif
 
 
 // Tries to lookup RFID-tag-string in NVS and extracts parameter from it if found
@@ -2940,7 +3072,39 @@ void rfidPreferenceLookupHandler (void) {
         loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
 
         String s = prefsRfid.getString(currentRfidTagId, "-1");                 // Try to lookup rfidId in NVS
-        if (!s.compareTo("-1")) {
+        
+        #ifdef RFID_CARDMAN
+            if (!s.compareTo("-1") && cardData.cardType > 0) {              
+                char sb[255];
+                //// #<file/folder>#<startPlayPositionInBytes>#<playmode>#<trackNumberToStartWith>
+                if(cardData.cardType == 1 ) {
+                    snprintf(sb, sizeof(sb), "#%s#0#%u#0", cardData.uri, cardData.playMode);
+                }
+                else if(cardData.cardType == 173 ) {
+                    snprintf(sb, sizeof(sb), "#0#0#%u#0", cardData.playMode);
+                }
+                else if(cardData.cardType == 17 ) {
+                    char ph[50];
+                    snprintf(ph, sizeof(ph), "/%s/%03u.mp3", cardData.uuid64, cardData.trackNr);
+                    if(!FSystem.exists(ph)) {
+                        if(dlTaskHandle == NULL) xTaskCreate(DownloadUri, "DownloadUri", 6000, NULL, 1, &dlTaskHandle);
+                        return;
+                    } 
+                    else {
+                        snprintf(sb, sizeof(sb), "#/%s/%03u.mp3#0#%u#0", cardData.uuid64, cardData.trackNr, cardData.playMode);
+                    }
+                }
+                else if(cardData.cardType == 18 ) {
+                    if(cardData.playMode<5 || cardData.playMode>9 || cardData.playMode==8) cardData.playMode = 6;
+                    if(dlTaskHandle == NULL) xTaskCreate(DownloadUri, "DownloadUri", 6000, NULL, 1, &dlTaskHandle);
+                    snprintf(sb, sizeof(sb), "#/%s#0#%u#0", cardData.uuid64, cardData.playMode);
+                }
+                s = String(sb);
+                loggerNl(serialDebug, sb, LOGLEVEL_ERROR);
+            }
+        #endif
+
+        if (!s.compareTo("-1")) {              
             loggerNl(serialDebug, (char *) FPSTR(rfidTagUnknownInNvs), LOGLEVEL_ERROR);
             #ifdef NEOPIXEL_ENABLE
                 showLedError = true;
@@ -4018,6 +4182,10 @@ void setup() {
         esp_sleep_enable_ext0_wakeup((gpio_num_t) PAUSEPLAY_BUTTON, 0);
     #endif
 
+    #ifdef RFID_CARDMAN
+        cardman_init();
+    #endif
+     
     #ifdef PN5180_ENABLE_LPCD
         // disable pin hold from deep sleep (LPCD)
         gpio_deep_sleep_hold_dis();
