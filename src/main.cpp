@@ -11,6 +11,8 @@
     #include "settings-lolin_d32.h"                     // Contains all user-relevant settings for Wemos Lolin D32
 #elif (HAL == 4)
     #include "settings-lolin_d32_pro.h"                 // Contains all user-relevant settings for Wemos Lolin D32 pro
+#elif (HAL == 5)
+    #include "settings-custom.h"                        // Contains all user-relevant settings custom-board
 #endif
 
 #ifdef USEROTARY_ENABLE
@@ -26,6 +28,7 @@
     #include "ESP32FtpServer.h"
 #endif
 #ifdef BLUETOOTH_ENABLE
+    #include "esp_bt.h"
     #include "BluetoothA2DPSink.h"
 #endif
 #include "Audio.h"
@@ -88,13 +91,16 @@
 uint8_t serialLoglength = 200;
 char *logBuf = (char*) calloc(serialLoglength, sizeof(char)); // Buffer for all log-messages
 
+// FilePathLength
+#define MAX_FILEPATH_LENTGH 256
+
 #ifdef HEADPHONE_ADJUST_ENABLE
     bool headphoneLastDetectionState;
     uint32_t headphoneLastDetectionTimestamp = 0;
 #endif
 
 #ifdef BLUETOOTH_ENABLE
-    BluetoothA2DPSink a2dp_sink;
+    BluetoothA2DPSink *a2dp_sink;
 #endif
 
 #ifdef MEASURE_BATTERY_VOLTAGE
@@ -108,6 +114,10 @@ char *logBuf = (char*) calloc(serialLoglength, sizeof(char)); // Buffer for all 
 #ifdef PLAY_LAST_RFID_AFTER_REBOOT
     bool recoverLastRfid = true;
 #endif
+
+// Operation Mode
+#define OPMODE_NORMAL                   0           // Normal mode
+#define OPMODE_BLUETOOTH                1           // Bluetooth mode. WiFi is deactivated. Music from SD and webstreams can't be played.
 
 // Track-Control
 #define STOP                            1           // Stop play
@@ -144,6 +154,8 @@ char *logBuf = (char*) calloc(serialLoglength, sizeof(char)); // Buffer for all 
 #define REPEAT_TRACK                    111         // Changes active playmode to endless-loop (for a single track)
 #define DIMM_LEDS_NIGHTMODE             120         // Changes LED-brightness
 #define TOGGLE_WIFI_STATUS              130         // Toggles WiFi-status
+#define TOGGLE_BLUETOOTH_MODE           140         // Toggles Normal/Bluetooth Mode
+#define ENABLE_FTP_SERVER               150         // Enables FTP-server
 
 #define CMD_PLAYPAUSE                   140         // Admin-Cmd Play/Pause
 #define CMD_PREV                        141         // Admin-Cmd Prev Track
@@ -179,6 +191,9 @@ typedef struct {
     char nvsKey[13];
     char nvsEntry[275];
 } nvs_t;
+
+// Operation Mode
+volatile uint8_t operationMode;
 
 // Configuration of initial values (for the first start) goes here....
 // There's no need to change them here as they can be configured via webinterface
@@ -381,6 +396,7 @@ void freeMultiCharArray(char **arr, const uint32_t cnt);
 uint8_t getRepeatMode(void);
 bool getWifiEnableStatusFromNVS(void);
 void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+void convertAsciiToUtf8(String asciiString, char *utf8String);
 void convertUtf8ToAscii(String utf8String, char *asciiString);
 void explorerHandleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 void explorerHandleFileStorageTask(void *parameter);
@@ -423,6 +439,9 @@ void volumeHandler(const int32_t _minVolume, const int32_t _maxVolume);
 void volumeToQueueSender(const int32_t _newVolume);
 wl_status_t wifiManager(void);
 bool writeWifiStatusToNVS(bool wifiStatus);
+void bluetoothHandler(void);
+uint8_t readOperationModeFromNVS(void);
+bool setOperationMode(uint8_t operationMode);
 
 
 /* Wrapper-function for serial-logging (with newline)
@@ -588,6 +607,13 @@ void doButtonActions(void) {
             if (buttons[0].isPressed && buttons[2].isPressed) {
                 buttons[0].isPressed = false;
                 buttons[2].isPressed = false;
+                if (wifiManager() != WL_CONNECTED) {
+                    #ifdef NEOPIXEL_ENABLE
+                        showLedError = true;
+                        loggerNl(serialDebug, (char *) FPSTR(unableToStartFtpServer), LOGLEVEL_ERROR);
+                    #endif
+                    return;
+                }
                 ftpEnableLastStatus = true;
                 #ifdef NEOPIXEL_ENABLE
                     showLedOk = true;
@@ -1888,7 +1914,7 @@ void showLed(void *parameter) {
     static unsigned long lastSwitchTimestamp = 0;
     static bool redrawProgress = false;
     static uint8_t lastLedBrightness = ledBrightness;
-
+    static CRGB::HTMLColorCode idleColor;
     static CRGB leds[NUM_LEDS];
     FastLED.addLeds<CHIPSET , LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalSMD5050 );
     FastLED.setBrightness(ledBrightness);
@@ -2114,19 +2140,32 @@ void showLed(void *parameter) {
 
         switch (playProperties.playMode) {
             case NO_PLAYLIST:                   // If no playlist is active (idle)
+                #ifdef BLUETOOTH_ENABLE
+                if(operationMode == OPMODE_BLUETOOTH ) {
+                    idleColor = CRGB::Blue;
+                } else  {
+                #endif
+                    if(wifiManager() == WL_CONNECTED) {
+                        idleColor = CRGB::White;
+                    } else {
+                        idleColor = CRGB::Green;
+                    }
+                #ifdef BLUETOOTH_ENABLE
+                }
+                #endif
                 if (hlastVolume == currentVolume && lastLedBrightness == ledBrightness) {
                     for (uint8_t i=0; i<NUM_LEDS; i++) {
                         FastLED.clear();
                         if (ledAddress(i) == 0) {       // White if Wifi is enabled and blue if not
-                            leds[0] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[NUM_LEDS/4] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[NUM_LEDS/2] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[NUM_LEDS/4*3] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
+                            leds[0]            = idleColor;
+                            leds[NUM_LEDS/4]   = idleColor;
+                            leds[NUM_LEDS/2]   = idleColor;
+                            leds[NUM_LEDS/4*3] = idleColor;
                         } else {
-                            leds[ledAddress(i) % NUM_LEDS] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[(ledAddress(i)+NUM_LEDS/4) % NUM_LEDS] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[(ledAddress(i)+NUM_LEDS/2) % NUM_LEDS] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
-                            leds[(ledAddress(i)+NUM_LEDS/4*3) % NUM_LEDS] = (wifiManager() == WL_CONNECTED) ? CRGB::White : CRGB::Blue;
+                            leds[ledAddress(i) % NUM_LEDS]                = idleColor;
+                            leds[(ledAddress(i)+NUM_LEDS/4) % NUM_LEDS]   = idleColor;
+                            leds[(ledAddress(i)+NUM_LEDS/2) % NUM_LEDS]   = idleColor;
+                            leds[(ledAddress(i)+NUM_LEDS/4*3) % NUM_LEDS] = idleColor;
                         }
                         FastLED.show();
                         for (uint8_t i=0; i<=50; i++) {
@@ -2927,7 +2966,39 @@ void doRfidCardModifications(const uint32_t mod) {
             }
 
             break;
+        #ifdef BLUETOOTH_ENABLE
+            case TOGGLE_BLUETOOTH_MODE:
+                if (readOperationModeFromNVS() == OPMODE_NORMAL) {
+                    #ifdef NEOPIXEL_ENABLE
+                        showLedOk = true;
+                    #endif
+                    setOperationMode(OPMODE_BLUETOOTH);
+                } else if (readOperationModeFromNVS() == OPMODE_BLUETOOTH) {
+                    #ifdef NEOPIXEL_ENABLE
+                        showLedOk = true;
+                    #endif
+                    setOperationMode(OPMODE_NORMAL);
+                } else {
+                    #ifdef NEOPIXEL_ENABLE
+                        showLedError = true;
+                    #endif
+                }
+                break;
+        #endif
+        case ENABLE_FTP_SERVER:
+            if (wifiManager() == WL_CONNECTED && !ftpEnableLastStatus && !ftpEnableCurrentStatus) {
+                ftpEnableLastStatus = true;
+                #ifdef NEOPIXEL_ENABLE
+                    showLedOk = true;
+                #endif
+            } else {
+                #ifdef NEOPIXEL_ENABLE
+                    showLedError = true;
+                    loggerNl(serialDebug, (char *) FPSTR(unableToStartFtpServer), LOGLEVEL_ERROR);
+                #endif
+            }
 
+        break;
         case CMD_PLAYPAUSE:
             trackControlToQueueSender(PAUSEPLAY);
             break;
@@ -3142,6 +3213,14 @@ void rfidPreferenceLookupHandler (void) {
                 #ifdef MQTT_ENABLE
                     publishMqtt((char *) FPSTR(topicRfidState), currentRfidTagId, false);
                 #endif
+
+                #ifdef BLUETOOTH_ENABLE
+                // if music rfid was read, go back to normal mode
+                if(operationMode == OPMODE_BLUETOOTH) {
+                    setOperationMode(OPMODE_NORMAL);
+                }
+                #endif
+
                 trackQueueDispatcher(_file, _lastPlayPos, _playMode, _trackLastPlayed);
             }
         }
@@ -3227,6 +3306,20 @@ bool writeWifiStatusToNVS(bool wifiStatus) {
             wifiNeedsRestart = true;
             wifiEnabled = true;
             return true;
+        }
+    }
+    return true;
+}
+
+uint8_t readOperationModeFromNVS(void) {
+    return prefsSettings.getUChar("operationMode", OPMODE_NORMAL);
+}
+
+bool setOperationMode(uint8_t newOperationMode) {
+    uint8_t currentOperationMode = prefsSettings.getUChar("operationMode", OPMODE_NORMAL);
+    if(currentOperationMode != newOperationMode) {
+        if (prefsSettings.putUChar("operationMode", newOperationMode)) {
+            ESP.restart();
         }
     }
     return true;
@@ -3334,6 +3427,8 @@ wl_status_t wifiManager(void) {
     return WiFi.status();
 }
 
+const char mqttTab[] PROGMEM = "<a class=\"nav-item nav-link\" id=\"nav-mqtt-tab\" data-toggle=\"tab\" href=\"#nav-mqtt\" role=\"tab\" aria-controls=\"nav-mqtt\" aria-selected=\"false\"><i class=\"fas fa-network-wired\"></i> MQTT</a>";
+const char ftpTab[] PROGMEM = "<a class=\"nav-item nav-link\" id=\"nav-ftp-tab\" data-toggle=\"tab\" href=\"#nav-ftp\" role=\"tab\" aria-controls=\"nav-ftp\" aria-selected=\"false\"><i class=\"fas fa-folder\"></i> FTP</a>";
 
 // Used for substitution of some variables/templates of html-files. Is called by webserver's template-engine
 String templateProcessor(const String& templ) {
@@ -3345,6 +3440,12 @@ String templateProcessor(const String& templ) {
         return String(ftpUserLength-1);
     } else if (templ == "FTP_PWD_LENGTH") {
         return String(ftpPasswordLength-1);
+    } else if (templ == "SHOW_FTP_TAB") {         // Only show FTP-tab if FTP-support was compiled
+        #ifdef FTP_ENABLE
+            return (String) FPSTR(ftpTab);
+        #else
+            return String();
+        #endif
     } else if (templ == "INIT_LED_BRIGHTNESS") {
         return String(prefsSettings.getUChar("iLedBrightness", 0));
     } else if (templ == "NIGHT_LED_BRIGHTNESS") {
@@ -3367,6 +3468,12 @@ String templateProcessor(const String& templ) {
         return String(prefsSettings.getUInt("vCheckIntv", voltageCheckInterval));
     } else if (templ == "MQTT_SERVER") {
         return prefsSettings.getString("mqttServer", "-1");
+    } else if (templ == "SHOW_MQTT_TAB") {        // Only show MQTT-tab if MQTT-support was compiled
+        #ifdef MQTT_ENABLE
+            return (String) FPSTR(mqttTab);
+        #else
+            return String();
+        #endif
     } else if (templ == "MQTT_ENABLE") {
         if (enableMqtt) {
             return String("checked=\"checked\"");
@@ -3498,10 +3605,11 @@ bool processJsonRequest(char *_serialJson) {
 
     } else if (doc.containsKey("rfidAssign")) {
         const char *_rfidIdAssinId = object["rfidAssign"]["rfidIdMusic"];
-        const char *_fileOrUrl = object["rfidAssign"]["fileOrUrl"];
+        char _fileOrUrlAscii[MAX_FILEPATH_LENTGH];
+        convertUtf8ToAscii(object["rfidAssign"]["fileOrUrl"], _fileOrUrlAscii);
         uint8_t _playMode = object["rfidAssign"]["playMode"];
         char rfidString[275];
-        snprintf(rfidString, sizeof(rfidString) / sizeof(rfidString[0]), "%s%s%s0%s%u%s0", stringDelimiter, _fileOrUrl, stringDelimiter, stringDelimiter, _playMode, stringDelimiter);
+        snprintf(rfidString, sizeof(rfidString) / sizeof(rfidString[0]), "%s%s%s0%s%u%s0", stringDelimiter, _fileOrUrlAscii, stringDelimiter, stringDelimiter, _playMode, stringDelimiter);
         prefsRfid.putString(_rfidIdAssinId, rfidString);
         Serial.println(_rfidIdAssinId);
         Serial.println(rfidString);
@@ -3784,25 +3892,62 @@ void webserverStart(void) {
         return true;
     }
 
-// Conversion routine for http UTF-8 strings
-void convertUtf8ToAscii(String utf8String, char *asciiString) {
-    uint16_t i = 0, j=0;
-    bool f_C3_seen = false;
+// Conversion routine
+void convertAsciiToUtf8(String asciiString, char *utf8String) {
 
-    while(utf8String[i] != 0) {                                     // convert UTF8 to ASCII
-        if(utf8String[i] == 195){                                   // C3
-            i++;
-            f_C3_seen = true;
-            continue;
+    int k=0;
+
+    for (int i=0; i<asciiString.length() && k<MAX_FILEPATH_LENTGH-2; i++)
+    {
+
+        switch (asciiString[i]) {
+            case 0x8e: utf8String[k++]=0xc3; utf8String[k++]=0x84;  break; // Ä
+            case 0x84: utf8String[k++]=0xc3; utf8String[k++]=0xa4;  break; // ä
+            case 0x9a: utf8String[k++]=0xc3; utf8String[k++]=0x9c;  break; // Ü
+            case 0x81: utf8String[k++]=0xc3; utf8String[k++]=0xbc;  break; // ü
+            case 0x99: utf8String[k++]=0xc3; utf8String[k++]=0x96;  break; // Ö
+            case 0x94: utf8String[k++]=0xc3; utf8String[k++]=0xb6;  break; // ö
+            case 0xe1: utf8String[k++]=0xc3; utf8String[k++]=0x9f;  break; // ß
+            default: utf8String[k++]=asciiString[i];
         }
-        asciiString[j] = utf8String[i];
-        if(asciiString[j] > 128 && asciiString[j] < 189 && f_C3_seen == true) {
-            asciiString[j] = asciiString[j] + 64;                      // found a related ASCII sign
-            f_C3_seen = false;
-        }
-        i++; j++;
     }
-    asciiString[j] = 0;
+
+    utf8String[k]=0;
+
+}
+
+void convertUtf8ToAscii(String utf8String, char *asciiString) {
+
+  int k=0;
+  bool f_C3_seen = false;
+
+  for (int i=0; i<utf8String.length() && k<MAX_FILEPATH_LENTGH-1; i++)
+  {
+
+    if(utf8String[i] == 195){                                   // C3
+      f_C3_seen = true;
+      continue;
+    } else {
+      if (f_C3_seen == true) {
+        f_C3_seen = false;
+        switch (utf8String[i]) {
+          case 0x84: asciiString[k++]=0x8e;  break; // Ä
+          case 0xa4: asciiString[k++]=0x84;  break; // ä
+          case 0x9c: asciiString[k++]=0x9a;  break; // Ü
+          case 0xbc: asciiString[k++]=0x81;  break; // ü
+          case 0x96: asciiString[k++]=0x99;  break; // Ö
+          case 0xb6: asciiString[k++]=0x94;  break; // ö
+          case 0x9f: asciiString[k++]=0xe1;  break; // ß
+          default: asciiString[k++]=0xdb;  // Unknow...
+        }
+      } else {
+        asciiString[k++]=utf8String[i];
+      }
+
+    }
+  }
+
+  asciiString[k]=0;
 
 }
 
@@ -3815,7 +3960,7 @@ void explorerHandleFileUpload(AsyncWebServerRequest *request, String filename, s
     // New File
     if (!index) {
         String utf8FilePath;
-        static char asciiFilePath[256];
+        static char filePath[MAX_FILEPATH_LENTGH];
         if (request->hasParam("path")) {
             AsyncWebParameter *param = request->getParam("path");
             utf8FilePath = param->value() + "/" + filename;
@@ -3823,7 +3968,11 @@ void explorerHandleFileUpload(AsyncWebServerRequest *request, String filename, s
         } else {
             utf8FilePath = "/" + filename;
         }
-        convertUtf8ToAscii(utf8FilePath, asciiFilePath);
+
+        convertUtf8ToAscii(utf8FilePath, filePath);
+
+        snprintf(logBuf, serialLoglength, "%s: %s", (char *) FPSTR(writingFile), utf8FilePath.c_str());
+        loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
 
         // Create Ringbuffer for upload
         if(explorerFileUploadRingBuffer == NULL) {
@@ -3840,7 +3989,7 @@ void explorerHandleFileUpload(AsyncWebServerRequest *request, String filename, s
             explorerHandleFileStorageTask, /* Function to implement the task */
             "fileStorageTask", /* Name of the task */
             4000,  /* Stack size in words */
-            asciiFilePath,  /* Task input parameter */
+            filePath,  /* Task input parameter */
             2 | portPRIVILEGE_BIT,  /* Priority of the task */
             &fileStorageTaskHandle  /* Task handle. */
         );
@@ -3876,9 +4025,6 @@ void explorerHandleFileStorageTask(void *parameter) {
 
     uploadFile = FSystem.open((char *)parameter, "w");
 
-    snprintf(logBuf, serialLoglength, "%s: %s", (char *) FPSTR(writingFile), (char *) parameter);
-    loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
-
     for(;;) {
         esp_task_wdt_reset();
 
@@ -3909,13 +4055,13 @@ void explorerHandleListRequest(AsyncWebServerRequest *request) {
     //StaticJsonDocument<4096> jsonBuffer;
     String serializedJsonString;
     AsyncWebParameter *param;
-    char asciiFilePath[256];
+    char filePath[MAX_FILEPATH_LENTGH];
     JsonArray obj = jsonBuffer.createNestedArray();
     File root;
     if(request->hasParam("path")){
         param = request->getParam("path");
-        convertUtf8ToAscii(param->value(), asciiFilePath);
-        root = FSystem.open(asciiFilePath);
+        convertUtf8ToAscii(param->value(), filePath);
+        root = FSystem.open(filePath);
     } else {
         root = FSystem.open("/");
     }
@@ -3936,7 +4082,8 @@ void explorerHandleListRequest(AsyncWebServerRequest *request) {
 
     while(file) {
         JsonObject entry = obj.createNestedObject();
-        std::string path = file.name();
+        convertAsciiToUtf8(file.name(), filePath);
+        std::string path = filePath;
         std::string fileName = path.substr(path.find_last_of("/") + 1);
 
         entry["name"] = fileName;
@@ -3949,7 +4096,7 @@ void explorerHandleListRequest(AsyncWebServerRequest *request) {
     }
 
     serializeJson(obj, serializedJsonString);
-    request->send(200, "application/json; charset=iso-8859-1", serializedJsonString);
+    request->send(200, "application/json; charset=utf-8", serializedJsonString);
 }
 
 bool explorerDeleteDirectory(File dir) {
@@ -3977,31 +4124,31 @@ bool explorerDeleteDirectory(File dir) {
 void explorerHandleDeleteRequest(AsyncWebServerRequest *request) {
     File file;
     AsyncWebParameter *param;
-    char asciiFilePath[256];
+    char filePath[MAX_FILEPATH_LENTGH];
     if(request->hasParam("path")){
         param = request->getParam("path");
-        convertUtf8ToAscii(param->value(), asciiFilePath);
-        if(FSystem.exists(asciiFilePath)) {
-            file = FSystem.open(asciiFilePath);
+        convertUtf8ToAscii(param->value(), filePath);
+        if(FSystem.exists(filePath)) {
+            file = FSystem.open(filePath);
             if(file.isDirectory()) {
                 if(explorerDeleteDirectory(file)) {
-                    snprintf(logBuf, serialLoglength, "DELETE:  %s deleted", asciiFilePath);
+                    snprintf(logBuf, serialLoglength, "DELETE:  %s deleted", param->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
                 } else {
-                    snprintf(logBuf, serialLoglength, "DELETE:  Cannot delete %s", asciiFilePath);
+                    snprintf(logBuf, serialLoglength, "DELETE:  Cannot delete %s", param->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
                 }
             } else {
-                if(FSystem.remove(asciiFilePath)) {
-                    snprintf(logBuf, serialLoglength, "DELETE:  %s deleted", asciiFilePath);
+                if(FSystem.remove(filePath)) {
+                    snprintf(logBuf, serialLoglength, "DELETE:  %s deleted", param->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
                 } else {
-                    snprintf(logBuf, serialLoglength, "DELETE:  Cannot delete %s", asciiFilePath);
+                    snprintf(logBuf, serialLoglength, "DELETE:  Cannot delete %s", param->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
                 }
             }
         } else {
-            snprintf(logBuf, serialLoglength, "DELETE: Path %s does not exist", asciiFilePath);
+            snprintf(logBuf, serialLoglength, "DELETE: Path %s does not exist", param->value().c_str());
             loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
         }
     } else {
@@ -4015,15 +4162,15 @@ void explorerHandleDeleteRequest(AsyncWebServerRequest *request) {
 // requires a GET parameter path to the new directory
 void explorerHandleCreateRequest(AsyncWebServerRequest *request) {
     AsyncWebParameter *param;
-    char asciiFilePath[256];
+    char filePath[MAX_FILEPATH_LENTGH];
     if(request->hasParam("path")){
         param = request->getParam("path");
-        convertUtf8ToAscii(param->value(), asciiFilePath);
-        if(FSystem.mkdir(asciiFilePath)) {
-            snprintf(logBuf, serialLoglength, "CREATE:  %s created", asciiFilePath);
+        convertUtf8ToAscii(param->value(), filePath);
+        if(FSystem.mkdir(filePath)) {
+            snprintf(logBuf, serialLoglength, "CREATE:  %s created", param->value().c_str());
             loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
         } else {
-            snprintf(logBuf, serialLoglength, "CREATE:  Cannot create %s", asciiFilePath);
+            snprintf(logBuf, serialLoglength, "CREATE:  Cannot create %s", param->value().c_str());
             loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
         }
     } else {
@@ -4038,8 +4185,8 @@ void explorerHandleCreateRequest(AsyncWebServerRequest *request) {
 void explorerHandleRenameRequest(AsyncWebServerRequest *request) {
     AsyncWebParameter *srcPath;
     AsyncWebParameter *dstPath;
-    char srcFullFilePath[256];
-    char dstFullFilePath[256];
+    char srcFullFilePath[MAX_FILEPATH_LENTGH];
+    char dstFullFilePath[MAX_FILEPATH_LENTGH];
     if(request->hasParam("srcpath") && request->hasParam("dstpath")) {
         srcPath = request->getParam("srcpath");
         dstPath = request->getParam("dstpath");
@@ -4047,14 +4194,14 @@ void explorerHandleRenameRequest(AsyncWebServerRequest *request) {
         convertUtf8ToAscii(dstPath->value(), dstFullFilePath);
         if(FSystem.exists(srcFullFilePath)) {
             if(FSystem.rename(srcFullFilePath, dstFullFilePath)) {
-                    snprintf(logBuf, serialLoglength, "RENAME:  %s renamed to %s", srcFullFilePath, dstFullFilePath);
+                    snprintf(logBuf, serialLoglength, "RENAME:  %s renamed to %s", srcPath->value().c_str(), dstPath->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_INFO);
             } else {
-                    snprintf(logBuf, serialLoglength, "RENAME:  Cannot rename %s", srcFullFilePath);
+                    snprintf(logBuf, serialLoglength, "RENAME:  Cannot rename %s", srcPath->value().c_str());
                     loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
             }
         } else {
-            snprintf(logBuf, serialLoglength, "RENAME: Path %s does not exist", srcFullFilePath);
+            snprintf(logBuf, serialLoglength, "RENAME: Path %s does not exist", srcPath->value().c_str());
             loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
         }
     } else {
@@ -4071,15 +4218,15 @@ void explorerHandleAudioRequest(AsyncWebServerRequest *request) {
     AsyncWebParameter *param;
     String playModeString;
     uint32_t playMode;
-    char asciiFilePath[256];
+    char filePath[MAX_FILEPATH_LENTGH];
     if(request->hasParam("path") && request->hasParam("playmode")) {
         param = request->getParam("path");
-        convertUtf8ToAscii(param->value(), asciiFilePath);
+        convertUtf8ToAscii(param->value(), filePath);
         param = request->getParam("playmode");
         playModeString = param->value();
 
         playMode = atoi(playModeString.c_str());
-        trackQueueDispatcher(asciiFilePath,0,playMode,0);
+        trackQueueDispatcher(filePath,0,playMode,0);
     } else {
         loggerNl(serialDebug, "AUDIO: No path variable set", LOGLEVEL_ERROR);
     }
@@ -4304,6 +4451,7 @@ void setup() {
 
     #ifdef RFID_READER_TYPE_MFRC522_SPI
         mfrc522.PCD_Init();
+        mfrc522.PCD_SetAntennaGain(rfidGain);
         delay(50);
         loggerNl(serialDebug, (char *) FPSTR(rfidScannerReady), LOGLEVEL_DEBUG);
     #endif
@@ -4346,17 +4494,6 @@ void setup() {
     #ifdef HEADPHONE_ADJUST_ENABLE
         pinMode(HP_DETECT, INPUT);
         headphoneLastDetectionState = digitalRead(HP_DETECT);
-    #endif
-
-    #ifdef BLUETOOTH_ENABLE
-        i2s_pin_config_t pin_config = {
-            .bck_io_num = I2S_BCLK,
-            .ws_io_num = I2S_LRC,
-            .data_out_num = I2S_DOUT,
-            .data_in_num = I2S_PIN_NO_CHANGE
-        };
-        a2dp_sink.set_pin_config(pin_config);
-        a2dp_sink.start("ESPuino");
     #endif
 
     // Create queues
@@ -4598,17 +4735,6 @@ void setup() {
         0 /* Core where the task should run */
     );
 
-    xTaskCreatePinnedToCore(
-        playAudio, /* Function to implement the task */
-        "mp3play", /* Name of the task */
-        11000,  /* Stack size in words */
-        NULL,  /* Task input parameter */
-        2 | portPRIVILEGE_BIT,  /* Priority of the task */
-        &mp3Play,  /* Task handle. */
-        1 /* Core where the task should run */
-    );
-
-
     // Activate internal pullups for all buttons
     
     pinMode(PAUSEPLAY_BUTTON, INPUT_PULLUP);
@@ -4632,8 +4758,36 @@ void setup() {
         }
     #endif
 
+    operationMode = readOperationModeFromNVS();
     wifiEnabled = getWifiEnableStatusFromNVS();
-    wifiManager();
+
+    #ifdef BLUETOOTH_ENABLE
+    if(operationMode == OPMODE_BLUETOOTH) {
+        a2dp_sink = new BluetoothA2DPSink();
+        i2s_pin_config_t pin_config = {
+            .bck_io_num = I2S_BCLK,
+            .ws_io_num = I2S_LRC,
+            .data_out_num = I2S_DOUT,
+            .data_in_num = I2S_PIN_NO_CHANGE
+        };
+        a2dp_sink->set_pin_config(pin_config);
+        a2dp_sink->start((char *) FPSTR(nameBluetoothDevice));
+    } else {
+        esp_bt_mem_release(ESP_BT_MODE_BTDM);
+    #endif
+        xTaskCreatePinnedToCore(
+            playAudio, /* Function to implement the task */
+            "mp3play", /* Name of the task */
+            11000,  /* Stack size in words */
+            NULL,  /* Task input parameter */
+            2 | portPRIVILEGE_BIT,  /* Priority of the task */
+            &mp3Play,  /* Task handle. */
+            1 /* Core where the task should run */
+        );
+        wifiManager();
+    #ifdef BLUETOOTH_ENABLE
+    }
+    #endif
 
     lastTimeActiveTimestamp = millis();     // initial set after boot
 
@@ -4644,49 +4798,71 @@ void setup() {
     Serial.printf("PSRAM: %u bytes\n", ESP.getPsramSize());
 }
 
+#ifdef BLUETOOTH_ENABLE
+void bluetoothHandler(void) {
+    esp_a2d_audio_state_t state = a2dp_sink->get_audio_state();
+    // Reset Sleep Timer when audio is playing
+    if(state == ESP_A2D_AUDIO_STATE_STARTED) {
+        lastTimeActiveTimestamp = millis();
+    }
+}
+#endif
 
 void loop() {
-    webserverStart();
-    #ifdef FTP_ENABLE
-        ftpManager();
+
+    #ifdef BLUETOOTH_ENABLE
+    if(operationMode == OPMODE_BLUETOOTH) {
+        bluetoothHandler();
+    } else {
     #endif
+        webserverStart();
+        #ifdef FTP_ENABLE
+            ftpManager();
+        #endif
+        volumeHandler(minVolume, maxVolume);
+        if (wifiManager() == WL_CONNECTED) {
+            #ifdef MQTT_ENABLE
+                if (enableMqtt) {
+                    reconnect();
+                    MQTTclient.loop();
+                    postHeartbeatViaMqtt();
+                }
+            #endif
+            #ifdef FTP_ENABLE
+                if (ftpEnableLastStatus && ftpEnableCurrentStatus) {
+                    ftpSrv->handleFTP();
+                }
+            #endif
+        }
+        #ifdef FTP_ENABLE
+            if (ftpEnableLastStatus && ftpEnableCurrentStatus) {
+                if (ftpSrv->isConnected()) {
+                    lastTimeActiveTimestamp = millis();     // Re-adjust timer while client is connected to avoid ESP falling asleep
+                }
+            }
+        #endif
+        ws.cleanupClients();
+    #ifdef BLUETOOTH_ENABLE
+    }
+    #endif
+
+
     #ifdef HEADPHONE_ADJUST_ENABLE
         headphoneVolumeManager();
     #endif
     #ifdef MEASURE_BATTERY_VOLTAGE
         batteryVoltageTester();
     #endif
-    volumeHandler(minVolume, maxVolume);
     buttonHandler();
     doButtonActions();
     sleepHandler();
     deepSleepManager();
     rfidPreferenceLookupHandler();
-    if (wifiManager() == WL_CONNECTED) {
-        #ifdef MQTT_ENABLE
-            if (enableMqtt) {
-                reconnect();
-                MQTTclient.loop();
-                postHeartbeatViaMqtt();
-            }
-        #endif
-        #ifdef FTP_ENABLE
-            if (ftpEnableLastStatus && ftpEnableCurrentStatus) {
-                ftpSrv->handleFTP();
-            }
-        #endif
-    }
-    #ifdef FTP_ENABLE
-        if (ftpEnableLastStatus && ftpEnableCurrentStatus) {
-            if (ftpSrv->isConnected()) {
-                lastTimeActiveTimestamp = millis();     // Re-adjust timer while client is connected to avoid ESP falling asleep
-            }
-        }
-    #endif
+
     #ifdef PLAY_LAST_RFID_AFTER_REBOOT
         recoverLastRfidPlayed();
     #endif
-    ws.cleanupClients();
+
 }
 
 

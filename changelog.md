@@ -24,3 +24,5 @@
 * 25.01.2020: Added directive `USE_LAST_VOLUME_AFTER_REBOOT`: Remembers volume used at last shutdown after reboot. This overwrites initial volume from GUI.
 * 28.01.2020: Removed cached RFID-filebrowser and replaced by realtime-browser
 * 01.02.2020: Introducing PCB: Lolin32 with SD_MMC + PN5180
+* 06.02.2020: German umlauts now supported. When uploading via FTP make sure to change charset to CP437.
+* 09.02.2020: Added support for bluetooth-sink (a2dp). Thanks @grch87 & @elmar-ops for providing this feature!
