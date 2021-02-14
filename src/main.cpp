@@ -3029,14 +3029,15 @@ void DownloadUri(void * parameter) {
             File cat = FSystem.open(path, FILE_READ);
             size_t n;
             while (ret && (n = cat.readBytesUntil('\n', uri, sizeof(uri)-1)) > 0) {
-                track++;
                 uri[n] = 0;
+                if(uri[0] == '#') continue;               
                 Serial.println(uri);
+                track++;
                 snprintf(path, sizeof(path), "%s/%03u.mp3", buid, track);
                 if(n>10 && !FSystem.exists(path)) {
                    ret = DownloadFile(&http, uri, path, temp);          
-                }    
-            }      
+                }
+            }
         }
         snprintf(path, sizeof(path), "%s/", buid);
         trackQueueDispatcher(path,0,cardData.playMode,0);
@@ -3050,7 +3051,6 @@ void DownloadUri(void * parameter) {
     vTaskDelete(NULL);
 }
 #endif
-
 
 // Tries to lookup RFID-tag-string in NVS and extracts parameter from it if found
 void rfidPreferenceLookupHandler (void) {
