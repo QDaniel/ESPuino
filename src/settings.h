@@ -75,6 +75,7 @@ const uint8_t serialDebug = LOGLEVEL_DEBUG;          // Current loglevel for ser
 // Buttons (better leave unchanged if in doubts :-))
 uint8_t buttonDebounceInterval = 50;                // Interval in ms to software-debounce buttons
 uint16_t intervalToLongPress = 700;                 // Interval in ms to distinguish between short and long press of previous/next-button
+uint8_t multiButtonReleaseTime = 200;                // Time in ms to allow multi button release
 
 // RFID
 #define RFID_SCAN_INTERVAL 300                      // Interval-time in ms (how often is RFID read?)
@@ -148,34 +149,32 @@ float voltageIndicatorHigh = 4.2;                   // Upper range for Neopixel-
     #define RFID_CARDMAN
 #endif
 
-#define CHUNK_SIZE 1024
+#define CHUNK_SIZE      1024
 
+#define POWER_BUTTON_NR    4
 
-// Button Layout
-#define BUTTON_MULTI_01   TOGGLE_WIFI_STATUS
-#define BUTTON_MULTI_02   ENABLE_FTP_SERVER
-#define BUTTON_MULTI_03   CMD_NOTHING
-#define BUTTON_MULTI_12   CMD_MEASUREBATTERY
-#define BUTTON_MULTI_13   CMD_NOTHING
-#define BUTTON_MULTI_23   CMD_NOTHING
+// Button Layout { BUTTON_STATES, ACTION }
+t_btn_action btnAction[] = {
+    {BUTTON_01 | BUTTON_02, TOGGLE_WIFI_STATUS},
+    {BUTTON_01 | BUTTON_03, ENABLE_FTP_SERVER},
+    {BUTTON_02 | BUTTON_03, CMD_MEASUREBATTERY},
 
-#define BUTTON_0_SHORT  CMD_NEXTTRACK
-#define BUTTON_1_SHORT  CMD_PREVTRACK
-#define BUTTON_2_SHORT  CMD_PLAYPAUSE
-#define BUTTON_3_SHORT  CMD_MEASUREBATTERY
-#define BUTTON_3_LONG   CMD_SLEEPMODE
-
-#define BUTTON_4_SHORT  CMD_VOLUMEDOWN
-#define BUTTON_4_LONG   CMD_VOLUMEDOWN
-#define BUTTON_5_SHORT  CMD_VOLUMEUP
-#define BUTTON_5_LONG   CMD_VOLUMEUP
-
-#ifdef USEROTARY_ENABLE
-    #define BUTTON_0_LONG   CMD_LASTTRACK
-    #define BUTTON_1_LONG   CMD_FIRSTTRACK
-    #define BUTTON_2_LONG   CMD_PLAYPAUSE
+    {BUTTON_01,  CMD_NEXTTRACK},
+    {BUTTON_02,  CMD_PREVTRACK},
+    {BUTTON_03,  CMD_PLAYPAUSE},
+    {BUTTON_04,  CMD_MEASUREBATTERY},
+    {BUTTON_04 | BUTTON_LP, CMD_SLEEPMODE},
+    {BUTTON_05,  CMD_VOLUMEDOWN},
+    {BUTTON_05 | BUTTON_LP, CMD_VOLUMEDOWN},
+    {BUTTON_06, CMD_VOLUMEUP},
+    {BUTTON_06 | BUTTON_LP, CMD_VOLUMEUP},
+ #ifdef USEROTARY_ENABLE
+    {BUTTON_01 | BUTTON_LP, CMD_LASTTRACK},
+    {BUTTON_02 | BUTTON_LP, CMD_FIRSTTRACK},
+    {BUTTON_03 | BUTTON_LP, CMD_PLAYPAUSE}
 #else
-    #define BUTTON_0_LONG   CMD_VOLUMEDOWN
-    #define BUTTON_1_LONG   CMD_VOLUMEUP
-    #define BUTTON_2_LONG   CMD_SLEEPMODE
-#endif
+    {BUTTON_01 | BUTTON_LP, CMD_VOLUMEUP},
+    {BUTTON_02 | BUTTON_LP, CMD_VOLUMEDOWN},
+    {BUTTON_03 | BUTTON_LP, CMD_SLEEPMODE}
+#endif   
+};

@@ -304,6 +304,8 @@ IPAddress myIP;
 hw_timer_t *timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
 
+bool powerButtonPressed = false;
+
 // Button-helper
 typedef struct {
     bool lastState : 1;
@@ -315,6 +317,16 @@ typedef struct {
 } t_button;
 
 t_button buttons[6];
+
+typedef struct {
+    int lastState;
+    int activeState;
+    int currentState;
+    unsigned long lastChangeTimestamp;
+    unsigned long lastActiveTimestamp;
+    unsigned long lastReleasedTimestamp;
+} t_button_info;
+t_button_info buttonInfo;
 
 Preferences prefsRfid;
 Preferences prefsSettings;
@@ -329,23 +341,23 @@ QueueHandle_t rfidCardQueue;
 RingbufHandle_t explorerFileUploadRingBuffer;
 QueueHandle_t explorerFileUploadStatusQueue;
 
-#if (NEXT_BUTTON > 0 && NEXT_BUTTON<50)
-    #define BUTTON_0_ENABLE
-#endif
-#if (PREVIOUS_BUTTON > 0 && PREVIOUS_BUTTON<50)
+#if (NEXT_BUTTON < 50)
     #define BUTTON_1_ENABLE
 #endif
-#if (PAUSEPLAY_BUTTON > 0 && PAUSEPLAY_BUTTON<50)
+#if (PPREVIOUS_BUTTON < 50)
     #define BUTTON_2_ENABLE
 #endif
-#ifdef USEROTARY_ENABLE
+#if (PAUSEPLAY_BUTTON < 50)
     #define BUTTON_3_ENABLE
 #endif
-#if (BUTTON_4 > 0 && BUTTON_4<50)
+#ifdef USEROTARY_ENABLE
     #define BUTTON_4_ENABLE
 #endif
-#if (BUTTON_5 > 0 && BUTTON_5<50)
+#if (BUTTON_5 < 50)
     #define BUTTON_5_ENABLE
+#endif
+#if (BUTTON_6 < 50)
+    #define BUTTON_6_ENABLE
 #endif
 
 // Prototypes
@@ -357,7 +369,7 @@ static int arrSortHelper(const void* a, const void* b);
 void batteryVoltageTester(void);
 void buttonHandler();
 void deepSleepManager(void);
-void doButtonActions(void);
+void buttonExecute(int btn);
 void doRfidCardModifications(const uint32_t mod);
 void doCmdAction(const uint32_t mod);
 bool dumpNvsToSd(char *_namespace, char *_destFile);
@@ -522,152 +534,76 @@ void buttonHandler() {
         if (lockControls) {
             return;
         }
+
         unsigned long currentTimestamp = millis();
-        #ifdef BUTTON_0_ENABLE
-            buttons[0].currentState = digitalRead(NEXT_BUTTON);
-        #endif
         #ifdef BUTTON_1_ENABLE
-            buttons[1].currentState = digitalRead(PREVIOUS_BUTTON);
+            bitWrite(buttonInfo.currentState, 0, !digitalRead(NEXT_BUTTON));
         #endif
         #ifdef BUTTON_2_ENABLE
-            buttons[2].currentState = digitalRead(PAUSEPLAY_BUTTON);
+            bitWrite(buttonInfo.currentState, 1, !digitalRead(PREVIOUS_BUTTON));
         #endif
         #ifdef BUTTON_3_ENABLE
-            buttons[3].currentState = digitalRead(DREHENCODER_BUTTON);
+            bitWrite(buttonInfo.currentState, 2, !digitalRead(PAUSEPLAY_BUTTON));
         #endif
         #ifdef BUTTON_4_ENABLE
-            buttons[4].currentState = digitalRead(BUTTON_4);
+            bitWrite(buttonInfo.currentState, 3, !digitalRead(DREHENCODER_BUTTON));
         #endif
         #ifdef BUTTON_5_ENABLE
-            buttons[5].currentState = digitalRead(BUTTON_5);
+            bitWrite(buttonInfo.currentState, 4, !digitalRead(BUTTON_5));
         #endif
+        #ifdef BUTTON_6_ENABLE
+            bitWrite(buttonInfo.currentState, 5, !digitalRead(BUTTON_6));
+        #endif
+        //TODO: Add additional Buttonstates here, by I2C or Resistormatrix
 
-        // Iterate over all buttons in struct-array
-        for (uint8_t i=0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
-            if (buttons[i].currentState != buttons[i].lastState && currentTimestamp - buttons[i].lastPressedTimestamp > buttonDebounceInterval) {
-                if (!buttons[i].currentState) {
-                    buttons[i].isPressed = true;
-                    buttons[i].lastPressedTimestamp = currentTimestamp;
-                } else {
-                    buttons[i].isReleased = true;
-                    buttons[i].lastReleasedTimestamp = currentTimestamp;
+        powerButtonPressed = bitRead(buttonInfo.currentState, POWER_BUTTON_NR);
+//        if(buttonInfo.currentState != 0) {
+//            Serial.print("Temp Button Code: ");
+//            Serial.println(buttonInfo.currentState);
+//        }
+        
+        unsigned long diff = (currentTimestamp - buttonInfo.lastActiveTimestamp);
+        if(buttonInfo.currentState == 0 && buttonInfo.currentState != buttonInfo.lastState && diff > buttonDebounceInterval)
+        {
+            bitWrite(buttonInfo.activeState, 31, diff >= intervalToLongPress);
+            Serial.print(F("Button Code: "));
+            Serial.print(buttonInfo.activeState, BIN);
+            Serial.print(F(" - "));
+            char buf[50];
+            sprintf(buf, "%u", buttonInfo.activeState);
+            Serial.println( buf );
+            buttonInfo.lastReleasedTimestamp = 0;
+            buttonExecute(buttonInfo.activeState);
+            buttonInfo.activeState = 0; 
+            buttonInfo.lastState = 0;
+        }
+
+        if(buttonInfo.currentState != buttonInfo.activeState) {
+            if(buttonInfo.activeState > buttonInfo.currentState) {
+                if(buttonInfo.lastReleasedTimestamp !=0 && currentTimestamp - buttonInfo.lastReleasedTimestamp > multiButtonReleaseTime) {
+                    buttonInfo.activeState = buttonInfo.currentState;
+                    buttonInfo.lastActiveTimestamp = currentTimestamp;
+                    buttonInfo.lastReleasedTimestamp = 0;
                 }
+                else if(buttonInfo.currentState != buttonInfo.lastState) buttonInfo.lastReleasedTimestamp = currentTimestamp; 
+            } else {
+                buttonInfo.lastReleasedTimestamp = 0; 
+                buttonInfo.activeState = buttonInfo.currentState;
+                buttonInfo.lastActiveTimestamp = currentTimestamp;
             }
-            buttons[i].lastState = buttons[i].currentState;
+            buttonInfo.lastChangeTimestamp = currentTimestamp;
+            buttonInfo.lastState = buttonInfo.currentState;
         }
     }
 }
 
-
 // Do corresponding actions for all buttons
-void doButtonActions(void) {
-    if (lockControls) {
-        return; // Avoid button-handling if buttons are locked
-    }
-
-    if (buttons[0].isPressed && buttons[1].isPressed) {
-        buttons[0].isPressed = false;
-        buttons[1].isPressed = false;
-        doCmdAction(BUTTON_MULTI_01);
-    }
-    else if (buttons[0].isPressed && buttons[2].isPressed) {
-        buttons[0].isPressed = false;
-        buttons[2].isPressed = false;
-        doCmdAction(BUTTON_MULTI_02);
-    }
-    else if (buttons[0].isPressed && buttons[3].isPressed) {
-        buttons[0].isPressed = false;
-        buttons[3].isPressed = false;
-        doCmdAction(BUTTON_MULTI_03);
-    }
-    else if (buttons[1].isPressed && buttons[2].isPressed) {
-        buttons[1].isPressed = false;
-        buttons[2].isPressed = false;
-        doCmdAction(BUTTON_MULTI_12);
-    }
-    else if (buttons[1].isPressed && buttons[3].isPressed) {
-        buttons[1].isPressed = false;
-        buttons[3].isPressed = false;
-        doCmdAction(BUTTON_MULTI_13);
-    }
-    else if (buttons[2].isPressed && buttons[3].isPressed) {
-        buttons[2].isPressed = false;
-        buttons[3].isPressed = false;
-        doCmdAction(BUTTON_MULTI_23);
-    }
-    else {
-        for (uint8_t i=0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
-            if (buttons[i].isPressed) {
-                if (buttons[i].lastReleasedTimestamp > buttons[i].lastPressedTimestamp) {
-                    if (buttons[i].lastReleasedTimestamp - buttons[i].lastPressedTimestamp >= intervalToLongPress) {
-                        switch (i)      // Long-press-actions
-                        {
-                        case 0:
-                            doCmdAction(BUTTON_0_LONG);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 1:
-                            doCmdAction(BUTTON_1_LONG);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 2:
-                            doCmdAction(BUTTON_2_LONG);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 3:
-                            doCmdAction(BUTTON_3_LONG);
-                            buttons[i].isPressed = false;
-                            break;                    
-
-                        case 4:
-                            doCmdAction(BUTTON_4_LONG);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 5: 
-                            doCmdAction(BUTTON_5_LONG);
-                            buttons[i].isPressed = false;
-                            break;
-                        }
-                    } else {
-                        switch (i)      // Short-press-actions
-                        {
-                        case 0:
-                            doCmdAction(BUTTON_0_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 1:
-                            doCmdAction(BUTTON_1_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 2:
-                            doCmdAction(BUTTON_2_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 3: 
-                            doCmdAction(BUTTON_3_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 4:
-                            doCmdAction(BUTTON_4_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-
-                        case 5: 
-                            doCmdAction(BUTTON_5_SHORT);
-                            buttons[i].isPressed = false;
-                            break;
-                        }
-                    }
-                }
-            }
+void buttonExecute(int btn) {
+// Iterate over all buttons in struct-array
+    for (uint8_t i=0; i < sizeof(btnAction) / sizeof(btnAction[0]); i++) {
+        if(btnAction[i].button == btn) {
+            doCmdAction(btnAction[i].action);
+            return;
         }
     }
 }
@@ -1930,11 +1866,11 @@ void showLed(void *parameter) {
             lastLedBrightness = ledBrightness;
         }
 
-        if (!buttons[3].currentState) {
+        if (powerButtonPressed) {
             FastLED.clear();
             for (uint8_t led = 0; led < NUM_LEDS; led++) {
                 leds[ledAddress(led)] = CRGB::Red;
-                if (buttons[3].currentState) {
+                if (!powerButtonPressed) {
                     FastLED.show();
                     delay(5);
                     deepSleepManager();
@@ -2016,7 +1952,7 @@ void showLed(void *parameter) {
                     }
 
                     for (uint8_t i=0; i<=100; i++) {
-                        if (hlastVolume != currentVolume || showLedError || showLedOk || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || showLedError || showLedOk || powerButtonPressed) {
                             break;
                         }
 
@@ -2038,7 +1974,7 @@ void showLed(void *parameter) {
             FastLED.show();
 
             for (uint8_t i=0; i<=50; i++) {
-                if (hlastVolume != currentVolume || showLedError || showLedOk || !buttons[3].currentState) {
+                if (hlastVolume != currentVolume || showLedError || showLedOk || powerButtonPressed) {
                     if (hlastVolume != currentVolume) {
                         volumeChangeShown = false;
                     }
@@ -2054,7 +1990,7 @@ void showLed(void *parameter) {
             for (uint8_t i=NUM_LEDS-1; i>0; i--) {
                 leds[ledAddress(i)] = CRGB::Black;
                 FastLED.show();
-                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || !buttons[3].currentState) {
+                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || powerButtonPressed) {
                     break;
                 } else {
                     vTaskDelay(portTICK_RATE_MS*30);
@@ -2071,9 +2007,9 @@ void showLed(void *parameter) {
                     leds[ledAddress(i)] = CRGB::Blue;
                     FastLED.show();
                     #ifdef MEASURE_BATTERY_VOLTAGE
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || powerButtonPressed) {
                     #else
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || powerButtonPressed) {
                     #endif
                         break;
                     } else {
@@ -2083,9 +2019,9 @@ void showLed(void *parameter) {
 
                 for (uint8_t i=0; i<=100; i++) {
                     #ifdef MEASURE_BATTERY_VOLTAGE
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || powerButtonPressed) {
                     #else
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || powerButtonPressed) {
                     #endif
                         break;
                     } else {
@@ -2097,9 +2033,9 @@ void showLed(void *parameter) {
                     leds[ledAddress(i)-1] = CRGB::Black;
                     FastLED.show();
                     #ifdef MEASURE_BATTERY_VOLTAGE
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || powerButtonPressed) {
                     #else
-                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || !buttons[3].currentState) {
+                        if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || powerButtonPressed) {
                     #endif
                         break;
                     } else {
@@ -2141,9 +2077,9 @@ void showLed(void *parameter) {
                         FastLED.show();
                         for (uint8_t i=0; i<=50; i++) {
                             #ifdef MEASURE_BATTERY_VOLTAGE
-                                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || playProperties.playMode != NO_PLAYLIST || !buttons[3].currentState) {
+                                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || showVoltageWarning || showLedVoltage || playProperties.playMode != NO_PLAYLIST || powerButtonPressed) {
                             #else
-                                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || playProperties.playMode != NO_PLAYLIST || !buttons[3].currentState) {
+                                if (hlastVolume != currentVolume || lastLedBrightness != ledBrightness || showLedError || showLedOk || playProperties.playMode != NO_PLAYLIST || powerButtonPressed) {
                             #endif
                                 break;
                             } else {
@@ -2180,9 +2116,9 @@ void showLed(void *parameter) {
             default:                            // If playlist is active (doesn't matter which type)
                 if (!playProperties.playlistFinished) {
                     #ifdef MEASURE_BATTERY_VOLTAGE
-                        if (playProperties.pausePlay != lastPlayState || lockControls != lastLockState || notificationShown || ledBusyShown || volumeChangeShown || showVoltageWarning || showLedVoltage || !buttons[3].currentState) {
+                        if (playProperties.pausePlay != lastPlayState || lockControls != lastLockState || notificationShown || ledBusyShown || volumeChangeShown || showVoltageWarning || showLedVoltage || powerButtonPressed) {
                     #else
-                        if (playProperties.pausePlay != lastPlayState || lockControls != lastLockState || notificationShown || ledBusyShown || volumeChangeShown || !buttons[3].currentState) {
+                        if (playProperties.pausePlay != lastPlayState || lockControls != lastLockState || notificationShown || ledBusyShown || volumeChangeShown || powerButtonPressed) {
                     #endif
                         lastPlayState = playProperties.pausePlay;
                         lastLockState = lockControls;
@@ -3841,86 +3777,84 @@ void webserverStart(void) {
 }
 
 // Dumps all RFID-entries from NVS into a file on SD-card
-    bool dumpNvsToSd(char *_namespace, char *_destFile) {
-        #ifdef NEOPIXEL_ENABLE
-            pauseNeopixel = true;   // Workaround to prevent exceptions due to Neopixel-signalisation while NVS-write
-        #endif
-        esp_partition_iterator_t pi;                // Iterator for find
-        const esp_partition_t* nvs;                 // Pointer to partition struct
-        esp_err_t result = ESP_OK;
-        const char* partname = "nvs";
-        uint8_t pagenr = 0;                         // Page number in NVS
-        uint8_t i;                                  // Index in Entry 0..125
-        uint8_t bm;                                 // Bitmap for an entry
-        uint32_t offset = 0;                        // Offset in nvs partition
-        uint8_t namespace_ID;                       // Namespace ID found
+bool dumpNvsToSd(char *_namespace, char *_destFile) {
+    #ifdef NEOPIXEL_ENABLE
+        pauseNeopixel = true;   // Workaround to prevent exceptions due to Neopixel-signalisation while NVS-write
+    #endif
+    esp_partition_iterator_t pi;                // Iterator for find
+    const esp_partition_t* nvs;                 // Pointer to partition struct
+    esp_err_t result = ESP_OK;
+    const char* partname = "nvs";
+    uint8_t pagenr = 0;                         // Page number in NVS
+    uint8_t i;                                  // Index in Entry 0..125
+    uint8_t bm;                                 // Bitmap for an entry
+    uint32_t offset = 0;                        // Offset in nvs partition
+    uint8_t namespace_ID;                       // Namespace ID found
 
-        pi = esp_partition_find ( ESP_PARTITION_TYPE_DATA,          // Get partition iterator for
-                                    ESP_PARTITION_SUBTYPE_ANY,      // this partition
-                                    partname ) ;
-        if (pi) {
-            nvs = esp_partition_get(pi);                            // Get partition struct
-            esp_partition_iterator_release(pi);                     // Release the iterator
-            dbgprint ( "Partition %s found, %d bytes",
-                    partname,
-                    nvs->size ) ;
-        } else {
-            snprintf(logBuf, serialLoglength, "Partition %s not found!", partname);
+    pi = esp_partition_find ( ESP_PARTITION_TYPE_DATA,          // Get partition iterator for
+                                ESP_PARTITION_SUBTYPE_ANY,      // this partition
+                                partname ) ;
+    if (pi) {
+        nvs = esp_partition_get(pi);                            // Get partition struct
+        esp_partition_iterator_release(pi);                     // Release the iterator
+        dbgprint ( "Partition %s found, %d bytes",
+                partname,
+                nvs->size ) ;
+    } else {
+        snprintf(logBuf, serialLoglength, "Partition %s not found!", partname);
+        loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
+        return NULL;
+    }
+    namespace_ID = FindNsID (nvs, _namespace) ;             // Find ID of our namespace in NVS
+    File backupFile = FSystem.open(_destFile, FILE_WRITE);
+    if (!backupFile) {
+        return false;
+    }
+    while (offset < nvs->size) {
+        result = esp_partition_read (nvs, offset,                // Read 1 page in nvs partition
+                                    &buf,
+                                    sizeof(nvs_page));
+        if (result != ESP_OK) {
+            snprintf(logBuf, serialLoglength, "Error reading NVS!");
             loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
-            return NULL;
-        }
-        namespace_ID = FindNsID (nvs, _namespace) ;             // Find ID of our namespace in NVS
-        File backupFile = FSystem.open(_destFile, FILE_WRITE);
-        if (!backupFile) {
             return false;
         }
-        while (offset < nvs->size) {
-            result = esp_partition_read (nvs, offset,                // Read 1 page in nvs partition
-                                        &buf,
-                                        sizeof(nvs_page));
-            if (result != ESP_OK) {
-                snprintf(logBuf, serialLoglength, "Error reading NVS!");
-                loggerNl(serialDebug, logBuf, LOGLEVEL_ERROR);
-                return false;
-            }
 
-            i = 0;
+        i = 0;
 
-            while (i < 126) {
-                bm = (buf.Bitmap[i/4] >> ((i % 4) * 2 )) & 0x03;  // Get bitmap for this entry
-                if (bm == 2) {
-                    if ((namespace_ID == 0xFF) ||                      // Show all if ID = 0xFF
-                        (buf.Entry[i].Ns == namespace_ID)) {           // otherwise just my namespace
-                        if (isNumber(buf.Entry[i].Key)) {
-                            String s = prefsRfid.getString((const char *)buf.Entry[i].Key);
-                            backupFile.printf("%s%s%s%s\n", stringOuterDelimiter, buf.Entry[i].Key, stringOuterDelimiter, s.c_str());
-                        }
+        while (i < 126) {
+            bm = (buf.Bitmap[i/4] >> ((i % 4) * 2 )) & 0x03;  // Get bitmap for this entry
+            if (bm == 2) {
+                if ((namespace_ID == 0xFF) ||                      // Show all if ID = 0xFF
+                    (buf.Entry[i].Ns == namespace_ID)) {           // otherwise just my namespace
+                    if (isNumber(buf.Entry[i].Key)) {
+                        String s = prefsRfid.getString((const char *)buf.Entry[i].Key);
+                        backupFile.printf("%s%s%s%s\n", stringOuterDelimiter, buf.Entry[i].Key, stringOuterDelimiter, s.c_str());
                     }
-                    i += buf.Entry[i].Span;                              // Next entry
-                } else {
-                    i++;
                 }
+                i += buf.Entry[i].Span;                              // Next entry
+            } else {
+                i++;
             }
-            offset += sizeof(nvs_page);                              // Prepare to read next page in nvs
-            pagenr++;
         }
-
-        backupFile.close();
-        #ifdef NEOPIXEL_ENABLE
-            pauseNeopixel = false;
-        #endif
-
-        return true;
+        offset += sizeof(nvs_page);                              // Prepare to read next page in nvs
+        pagenr++;
     }
 
+    backupFile.close();
+    #ifdef NEOPIXEL_ENABLE
+        pauseNeopixel = false;
+    #endif
+
+    return true;
+}
+
 // Conversion routine
-void convertAsciiToUtf8(String asciiString, char *utf8String) {
-
+void convertAsciiToUtf8(String asciiString, char *utf8String)
+{
     int k=0;
-
     for (int i=0; i<asciiString.length() && k<MAX_FILEPATH_LENTGH-2; i++)
     {
-
         switch (asciiString[i]) {
             case 0x8e: utf8String[k++]=0xc3; utf8String[k++]=0x84;  break; // Ä
             case 0x84: utf8String[k++]=0xc3; utf8String[k++]=0xa4;  break; // ä
@@ -3932,9 +3866,7 @@ void convertAsciiToUtf8(String asciiString, char *utf8String) {
             default: utf8String[k++]=asciiString[i];
         }
     }
-
     utf8String[k]=0;
-
 }
 
 void convertUtf8ToAscii(String utf8String, char *asciiString) {
@@ -3969,7 +3901,6 @@ void convertUtf8ToAscii(String utf8String, char *asciiString) {
   }
 
   asciiString[k]=0;
-
 }
 
 // Handles file upload request from the explorer
@@ -4875,7 +4806,6 @@ void loop() {
         batteryVoltageTester();
     #endif
     buttonHandler();
-    doButtonActions();
     sleepHandler();
     deepSleepManager();
     rfidPreferenceLookupHandler();

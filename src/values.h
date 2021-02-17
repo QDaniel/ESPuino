@@ -62,4 +62,28 @@
 #define PLAYLIST                        2           // Repeat whole playlist (infinite loop)
 #define TRACK_N_PLAYLIST                3           // Repeat both (infinite loop)
 
+// Button-helper
+typedef struct {
+    uint button;
+    uint8_t action;
+} t_btn_action;
+
+#define BUTTON_01                        1           // Bit mask - Button 1
+#define BUTTON_02                        2           // Bit mask - Button 2
+#define BUTTON_03                        4           // Bit mask - Button 3
+#define BUTTON_04                        8           // Bit mask - Button 4
+#define BUTTON_05                       16           // Bit mask - Button 5
+#define BUTTON_06                       32           // Bit mask - Button 6
+#define BUTTON_07                       64           // Bit mask - Button 7
+#define BUTTON_08                      128           // Bit mask - Button 8
+#define BUTTON_09                      246           // Bit mask - Button 9
+#define BUTTON_10                      512           // Bit mask - Button 10
+#define BUTTON_11                     1024           // Bit mask - Button 11
+#define BUTTON_12                     2048           // Bit mask - Button 12
+#define BUTTON_13                     4096           // Bit mask - Button 13
+#define BUTTON_14                     8192           // Bit mask - Button 14
+#define BUTTON_15                    16384           // Bit mask - Button 15
+#define BUTTON_16                    32768           // Bit mask - Button 16
+#define BUTTON_LP               2147483648           // Bit mask - Button Longpress (bit 32)
+
 #endif 
