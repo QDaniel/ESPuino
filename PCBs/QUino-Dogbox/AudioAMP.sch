@@ -50,6 +50,7 @@ F 0 "J5" H 3172 2124 50  0000 R CNN
 F 1 "Conn_01x07_Male" H 3172 2033 50  0000 R CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical" H 3200 2100 50  0001 C CNN
 F 3 "~" H 3200 2100 50  0001 C CNN
+F 4 "0" H 3200 2100 50  0001 C CNN "JLCPCB BOM"
 	1    3200 2100
 	-1   0    0    -1  
 $EndComp

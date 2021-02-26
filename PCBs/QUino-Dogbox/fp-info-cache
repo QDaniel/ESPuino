@@ -1,4 +1,4 @@
-19028234115705883
+19031462826023165
 Arduino_Nano
 Arduino_Nano
 
@@ -50448,27 +50448,6 @@ MODULE_ESP32-DEVKITC-32D
 0
 38
 38
-ESP32-DevKit-LiPo-Rev
-ESPuino_Logo
-
-
-0
-0
-0
-ESP32-DevKit-LiPo-Rev
-QFN65P400X400X90-17N-D
-4mm * 4mm 16-pin QFN packag
-Integrated Circuit
-0
-17
-17
-ESP32-DevKit-LiPo-Rev
-SSOP20-0.65-7.6X5.2MM
-<b>Shrink Small Outline Package</b><p>package type SS
-
-0
-20
-20
 Ferrite_THT
 LairdTech_28C0236-0JW-10
 Ferrite, vertical, LairdTech 28C0236-0JW-10, https://assets.lairdtech.com/home/brandworld/files/28C0236-0JW-10.pdf, JW Miller core https://www.bourns.com/products/magnetic-products/j.w.-miller-through-hole-ferrite-beads-emi-filters
@@ -73359,6 +73338,41 @@ Potentiometer vertical Vishay T73YP
 0
 3
 3
+ProjectLib
+DSHP04TSS
+DSHP04TS-S-1
+Connector
+0
+8
+8
+ProjectLib
+ESPuino_Logo
+
+
+0
+0
+0
+ProjectLib
+QFN65P400X400X90-17N-D
+4mm * 4mm 16-pin QFN packag
+Integrated Circuit
+0
+17
+17
+ProjectLib
+SSOP20-0.65-7.6X5.2MM
+<b>Shrink Small Outline Package</b><p>package type SS
+
+0
+20
+20
+ProjectLib
+XCVR_ESP32-WROVER-I
+
+
+0
+39
+39
 RF
 Skyworks_SKY13575_639LF
 http://www.skyworksinc.com/uploads/documents/SKY13575_639LF_203270D.pdf

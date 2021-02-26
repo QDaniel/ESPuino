@@ -18,12 +18,12 @@ Power Supply
 $Comp
 L ProjectLib:+3.3V #PWR028
 U 1 1 581571AB
-P 5900 850
-F 0 "#PWR028" H 5900 700 50  0001 C CNN
-F 1 "+3.3V" H 5775 1000 50  0000 L CNN
-F 2 "" H 5900 850 60  0000 C CNN
-F 3 "" H 5900 850 60  0000 C CNN
-	1    5900 850 
+P 5300 850
+F 0 "#PWR028" H 5300 700 50  0001 C CNN
+F 1 "+3.3V" H 5175 1000 50  0000 L CNN
+F 2 "" H 5300 850 60  0000 C CNN
+F 3 "" H 5300 850 60  0000 C CNN
+	1    5300 850 
 	1    0    0    -1  
 $EndComp
 Text Notes 14680 8675 0    71   ~ 14
@@ -161,20 +161,6 @@ Text Notes 15405 9690 0    39   ~ 8
 Text Notes 15205 9400 0    39   Italic 8
 Rising-edge:Input
 $Comp
-L ProjectLib:R R13
-U 1 1 58292085
-P 5900 1100
-F 0 "R13" H 5900 1200 50  0000 C CNN
-F 1 "10k/R0402" H 5900 1000 50  0000 C CNN
-F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 5900 1030 30  0001 C CNN
-F 3 "" V 5900 1100 30  0000 C CNN
-F 4 "Value 1" H 5900 1100 60  0001 C CNN "Fieldname 1"
-F 5 "Value2" H 5900 1100 60  0001 C CNN "Fieldname2"
-F 6 "Value3" H 5900 1100 60  0001 C CNN "Fieldname3"
-	1    5900 1100
-	0    1    1    0   
-$EndComp
-$Comp
 L ProjectLib:GND #PWR026
 U 1 1 580FA16E
 P 5900 4500
@@ -265,17 +251,6 @@ Wire Notes Line
 	12180 9500 15805 9500
 Wire Notes Line
 	15805 6765 15805 7915
-$Comp
-L ProjectLib:Fiducial FID1
-U 1 1 5E1AAE8C
-P 6300 10450
-F 0 "FID1" H 6428 10496 50  0000 L CNN
-F 1 "Fiducial" H 6428 10405 50  0000 L CNN
-F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 6010 10375 20  0001 C CNN
-F 3 "" V 6250 10450 60  0000 C CNN
-	1    6300 10450
-	1    0    0    -1  
-$EndComp
 Wire Notes Line
 	5600 9950 5600 10750
 Wire Notes Line
@@ -290,39 +265,6 @@ Text Notes 2000 1600 0    70   Italic 14
 External\nPower Sense
 Text Notes 2050 2100 0    70   Italic 14
 Battery\nMeasurement
-$Comp
-L ProjectLib:Fiducial FID2
-U 1 1 5E1AB240
-P 7500 10450
-F 0 "FID2" H 7628 10496 50  0000 L CNN
-F 1 "Fiducial" H 7628 10405 50  0000 L CNN
-F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 7210 10375 20  0001 C CNN
-F 3 "" V 7450 10450 60  0000 C CNN
-	1    7500 10450
-	1    0    0    -1  
-$EndComp
-$Comp
-L ProjectLib:Fiducial FID3
-U 1 1 5E1BFBF2
-P 8700 10450
-F 0 "FID3" H 8828 10496 50  0000 L CNN
-F 1 "Fiducial" H 8828 10405 50  0000 L CNN
-F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 8410 10375 20  0001 C CNN
-F 3 "" V 8650 10450 60  0000 C CNN
-	1    8700 10450
-	1    0    0    -1  
-$EndComp
-$Comp
-L ProjectLib:Fiducial FID4
-U 1 1 5C62EE3A
-P 9900 10450
-F 0 "FID4" H 10028 10496 50  0000 L CNN
-F 1 "Fiducial" H 10028 10405 50  0000 L CNN
-F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 9610 10375 20  0001 C CNN
-F 3 "" V 9850 10450 60  0000 C CNN
-	1    9900 10450
-	1    0    0    -1  
-$EndComp
 $Sheet
 S 750  2700 2600 1600
 U 602F0C3D
@@ -341,17 +283,6 @@ Text Notes 950  3550 0    200  ~ 40
 USB to UART
 Text Notes 900  1600 0    70   Italic 14
 LiPo Charger
-$Comp
-L RF_Module:ESP32-S2-WROVER U1
-U 1 1 6071AC4C
-P 6900 2450
-F 0 "U1" H 7100 3850 50  0000 C CNN
-F 1 "ESP32-S2-WROVER" H 7300 3750 50  0000 C CNN
-F 2 "RF_Module:ESP32-S2-WROVER" H 7650 1300 50  0001 C CNN
-F 3 "https://www.espressif.com/sites/default/files/documentation/esp32-s2-wroom_esp32-s2-wroom-i_datasheet_en.pdf" H 6600 1650 50  0001 C CNN
-	1    6900 2450
-	1    0    0    -1  
-$EndComp
 Text GLabel 3350 3050 2    50   Input ~ 0
 GPIO_RX
 Text GLabel 3350 3200 2    50   Output ~ 0
@@ -364,40 +295,18 @@ Text GLabel 3600 2000 2    50   Output ~ 0
 VBAT_MEASURE
 Text GLabel 3600 1600 2    50   Output ~ 0
 EXTPWR_SENSE
-Wire Wire Line
-	6900 850  6900 1250
-Wire Wire Line
-	5900 1250 5900 1450
-Wire Wire Line
-	5900 1450 6300 1450
-Wire Wire Line
-	5900 950  5900 850 
-Connection ~ 5900 850 
-Wire Wire Line
-	5900 850  6900 850 
-Text GLabel 6300 1550 0    50   Input ~ 0
+Text GLabel 6300 1950 0    50   Input ~ 0
 GPIO_0
-Text GLabel 6300 1750 0    50   BiDi ~ 0
+Text GLabel 6300 2050 0    50   BiDi ~ 0
 GPIO_2
-Text GLabel 7500 1850 2    50   Input ~ 0
+Text GLabel 6300 3150 0    50   Input ~ 0
 VBAT_MEASURE
-Text GLabel 7500 2150 2    50   Input ~ 0
+Text GLabel 6300 3050 0    50   Input ~ 0
 EXTPWR_SENSE
-Text GLabel 7500 1750 2    50   Input ~ 0
+Text GLabel 7500 2650 2    50   Input ~ 0
 GPIO_TX
-Text GLabel 7500 1650 2    50   Output ~ 0
+Text GLabel 7500 2550 2    50   Output ~ 0
 GPIO_RX
-$Comp
-L Connector:Micro_SD_Card J2
-U 1 1 60806689
-P 15050 1350
-F 0 "J2" H 15000 2067 50  0000 C CNN
-F 1 "Micro_SD_Card" H 15000 1976 50  0000 C CNN
-F 2 "Connector_Card:microSD_HC_Wuerth_693072010801" H 16200 1650 50  0001 C CNN
-F 3 "http://katalog.we-online.de/em/datasheet/693072010801.pdf" H 15050 1350 50  0001 C CNN
-	1    15050 1350
-	1    0    0    -1  
-$EndComp
 $Comp
 L power:GND #PWR0101
 U 1 1 6080837B
@@ -417,20 +326,6 @@ Text GLabel 13700 1450 3    50   Input ~ 0
 GPIO_14
 Text GLabel 13850 1250 1    50   Output ~ 0
 GPIO_15
-$Comp
-L ProjectLib:R R1
-U 1 1 60819812
-P 13450 1250
-F 0 "R1" H 13450 1050 50  0000 C CNN
-F 1 "10k/R0402" H 13450 1150 50  0000 C CNN
-F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 13450 1180 30  0001 C CNN
-F 3 "" V 13450 1250 30  0000 C CNN
-F 4 "Value 1" H 13450 1250 60  0001 C CNN "Fieldname 1"
-F 5 "Value2" H 13450 1250 60  0001 C CNN "Fieldname2"
-F 6 "Value3" H 13450 1250 60  0001 C CNN "Fieldname3"
-	1    13450 1250
-	-1   0    0    1   
-$EndComp
 Wire Wire Line
 	13300 1250 13100 1250
 Connection ~ 13100 1350
@@ -438,20 +333,6 @@ Wire Wire Line
 	13100 1350 14150 1350
 Wire Wire Line
 	13600 1250 14150 1250
-$Comp
-L ProjectLib:R R2
-U 1 1 6082296A
-P 13450 1450
-F 0 "R2" H 13450 1250 50  0000 C CNN
-F 1 "10k/R0402" H 13450 1350 50  0000 C CNN
-F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 13450 1380 30  0001 C CNN
-F 3 "" V 13450 1450 30  0000 C CNN
-F 4 "Value 1" H 13450 1450 60  0001 C CNN "Fieldname 1"
-F 5 "Value2" H 13450 1450 60  0001 C CNN "Fieldname2"
-F 6 "Value3" H 13450 1450 60  0001 C CNN "Fieldname3"
-	1    13450 1450
-	-1   0    0    -1  
-$EndComp
 Wire Wire Line
 	13600 1450 14150 1450
 Wire Wire Line
@@ -467,21 +348,10 @@ Wire Wire Line
 Connection ~ 15850 2150
 Wire Wire Line
 	15850 2150 15850 1950
-Text GLabel 6300 2950 0    50   Output ~ 0
+Text GLabel 6300 2550 0    50   Output ~ 0
 GPIO_14
-Text GLabel 6300 3050 0    50   Input ~ 0
+Text GLabel 6300 2650 0    50   Input ~ 0
 GPIO_15
-$Comp
-L Connector:Conn_01x03_Male J3
-U 1 1 6084A694
-P 15400 3400
-F 0 "J3" H 15372 3332 50  0000 R CNN
-F 1 "Neopixel" H 15372 3423 50  0000 R CNN
-F 2 "Connector_JST:JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical" H 15400 3400 50  0001 C CNN
-F 3 "~" H 15400 3400 50  0001 C CNN
-	1    15400 3400
-	-1   0    0    1   
-$EndComp
 Wire Wire Line
 	15000 3300 15200 3300
 $Comp
@@ -499,19 +369,8 @@ Wire Wire Line
 	15200 3400 14500 3400
 Text GLabel 15200 3500 0    50   Input ~ 0
 LED_DI
-Text GLabel 6300 3150 0    50   Output ~ 0
+Text GLabel 7500 2350 2    50   Output ~ 0
 LED_DI
-$Comp
-L Connector:Conn_01x08_Female J1
-U 1 1 608581AE
-P 13550 3350
-F 0 "J1" H 13578 3326 50  0000 L CNN
-F 1 "RFID RC522" H 13578 3235 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical" H 13550 3350 50  0001 C CNN
-F 3 "~" H 13550 3350 50  0001 C CNN
-	1    13550 3350
-	1    0    0    -1  
-$EndComp
 Connection ~ 13100 1450
 NoConn ~ 13350 3150
 $Comp
@@ -536,11 +395,11 @@ Text GLabel 13350 3650 0    50   Input ~ 0
 RFID_CLK
 Text GLabel 13350 3750 0    50   Input ~ 0
 RFID_CS
-Text GLabel 7500 2950 2    50   Output ~ 0
+Text GLabel 7500 2050 2    50   Output ~ 0
 RFID_CS
-Text GLabel 7500 3050 2    50   Output ~ 0
+Text GLabel 6300 2150 0    50   Output ~ 0
 RFID_CLK
-Text GLabel 7500 3150 2    50   Output ~ 0
+Text GLabel 6300 2250 0    50   Output ~ 0
 RFID_MOSI
 Wire Wire Line
 	13100 2550 14500 2550
@@ -561,43 +420,12 @@ F8 "HEADPHONE_DETECT" O L 9150 4350 50
 $EndSheet
 Wire Wire Line
 	11400 2650 11850 2650
-$Comp
-L ProjectLib:SJ RFID_3.3V1
-U 1 1 608CF7B6
-P 12100 2000
-AR Path="/608CF7B6" Ref="RFID_3.3V1"  Part="1" 
-AR Path="/602F0C3D/608CF7B6" Ref="BAT_SENS_E?"  Part="1" 
-F 0 "RFID_3.3V1" H 12050 2100 50  0000 C CNN
-F 1 "Opened" H 12100 1925 50  0000 C CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 12108 2062 20  0001 C CNN
-F 3 "" H 12100 2000 60  0000 C CNN
-	1    12100 2000
-	1    0    0    -1  
-$EndComp
-$Comp
-L ProjectLib:SJ RFID_SWITCHED1
-U 1 1 608D3B68
-P 12750 2000
-AR Path="/608D3B68" Ref="RFID_SWITCHED1"  Part="1" 
-AR Path="/602F0C3D/608D3B68" Ref="BAT_SENS_E?"  Part="1" 
-F 0 "RFID_SWITCHED1" H 12750 2100 50  0000 C CNN
-F 1 "Opened" H 12750 1900 50  0000 C CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 12758 2062 20  0001 C CNN
-F 3 "" H 12750 2000 60  0000 C CNN
-	1    12750 2000
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	12850 2000 13100 2000
 Wire Wire Line
 	12200 2000 12450 2000
 Wire Wire Line
 	12450 2000 12450 3050
 Wire Wire Line
 	12450 3050 13350 3050
-Connection ~ 12450 2000
-Wire Wire Line
-	12450 2000 12650 2000
 Wire Wire Line
 	14500 4300 14500 3400
 Connection ~ 14500 3400
@@ -2330,12 +2158,12 @@ Audio AMP
 $Comp
 L power:GND #PWR0128
 U 1 1 609A5D5A
-P 6900 3550
-F 0 "#PWR0128" H 6900 3300 50  0001 C CNN
-F 1 "GND" H 6905 3377 50  0000 C CNN
-F 2 "" H 6900 3550 50  0001 C CNN
-F 3 "" H 6900 3550 50  0001 C CNN
-	1    6900 3550
+P 7800 3450
+F 0 "#PWR0128" H 7800 3200 50  0001 C CNN
+F 1 "GND" H 7805 3277 50  0000 C CNN
+F 2 "" H 7800 3450 50  0001 C CNN
+F 3 "" H 7800 3450 50  0001 C CNN
+	1    7800 3450
 	1    0    0    -1  
 $EndComp
 Connection ~ 13100 1250
@@ -2364,40 +2192,11 @@ Wire Wire Line
 	550  3050 550  1850
 Wire Wire Line
 	550  1850 750  1850
-Text GLabel 6300 3350 0    50   Input ~ 0
+Text GLabel 6300 2750 0    50   Input ~ 0
 RFID_MISO
 Wire Wire Line
 	4800 4050 4800 4100
 Connection ~ 4800 4050
-$Comp
-L ProjectLib:C C8
-U 1 1 5E7535B8
-P 5600 4250
-F 0 "C8" V 5550 4300 50  0000 L CNN
-F 1 "1uF/10V/10%/X5R/C0603" H 5700 4250 40  0000 L CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder" H 5600 4250 60  0001 C CNN
-F 3 "" H 5600 4250 60  0000 C CNN
-F 4 "Value 1" H 5600 4250 60  0001 C CNN "Fieldname 1"
-F 5 "Value2" H 5600 4250 60  0001 C CNN "Fieldname2"
-F 6 "Value3" H 5600 4250 60  0001 C CNN "Fieldname3"
-	1    5600 4250
-	1    0    0    -1  
-$EndComp
-$Comp
-L ProjectLib:SIDE_WTCM-TR(3x4) RST1
-U 1 1 580F1A95
-P 4800 4300
-F 0 "RST1" V 5100 4150 60  0000 L CNN
-F 1 "IT-1185AU2-160G-G-TR" V 5200 3800 50  0000 L CNN
-F 2 "Button_Switch_SMD:SW_SPST_B3U-3000P" H 4799 4338 60  0001 C CNN
-F 3 "" H 4799 4338 60  0000 C CNN
-F 4 "Value 1" H 4800 4300 60  0001 C CNN "Fieldname 1"
-F 5 "Value2" H 4800 4300 60  0001 C CNN "Fieldname2"
-F 6 "Value3" H 4800 4300 60  0001 C CNN "Fieldname3"
-	1    4800 4300
-	0    -1   1    0   
-$EndComp
-Connection ~ 5900 1450
 Wire Wire Line
 	5600 4350 5600 4500
 Connection ~ 5600 4500
@@ -2407,13 +2206,6 @@ Wire Wire Line
 	4800 4050 5600 4050
 Wire Wire Line
 	5600 4050 5600 4150
-Wire Wire Line
-	4800 1450 4800 4050
-Connection ~ 13100 2000
-Wire Wire Line
-	13100 2000 13100 2550
-Wire Wire Line
-	13100 1450 13100 2000
 $Sheet
 S 9400 750  1450 500 
 U 60EF3972
@@ -2440,9 +2232,6 @@ F 3 "" H 10850 1150 50  0001 C CNN
 	1    10850 1150
 	0    -1   -1   0   
 $EndComp
-Wire Wire Line
-	6900 850  9400 850 
-Connection ~ 6900 850 
 Text Notes 9650 1150 0    98   ~ 20
 Switched\nPower
 Wire Wire Line
@@ -2462,8 +2251,6 @@ Wire Wire Line
 Wire Wire Line
 	5900 4500 5600 4500
 Wire Wire Line
-	5900 1450 4800 1450
-Wire Wire Line
 	3350 4050 4800 4050
 Wire Wire Line
 	3350 2800 4700 2800
@@ -2475,17 +2262,17 @@ Wire Wire Line
 	4700 1200 4700 850 
 Connection ~ 4700 1200
 Wire Wire Line
-	4700 850  5900 850 
-Text GLabel 7500 2850 2    50   Output ~ 0
+	4700 850  5300 850 
+Text GLabel 7500 1950 2    50   Output ~ 0
 GATE_PWR
 NoConn ~ 14150 1050
 NoConn ~ 14150 1150
 NoConn ~ 14150 1750
 Text Label 12250 850  0    50   ~ 0
 VSwitched
-Text GLabel 6300 2250 0    50   Output ~ 0
+Text GLabel 6300 3250 0    50   Output ~ 0
 GPIO25_DAC_1
-Text GLabel 6300 2350 0    50   Output ~ 0
+Text GLabel 7500 3250 2    50   Output ~ 0
 GPIO26_DAC_2
 Text GLabel 9150 3350 0    50   Input ~ 0
 GPIO25_DAC_1
@@ -2497,6 +2284,284 @@ Text GLabel 6300 2450 0    50   Output ~ 0
 DAC_CLK
 Text GLabel 9150 4350 0    50   Output ~ 0
 HEADPHONE_JACK
-Text GLabel 7500 2650 2    50   Input ~ 0
+Text GLabel 7500 2450 2    50   Input ~ 0
 HEADPHONE_JACK
+Wire Wire Line
+	4800 1450 4800 4050
+Wire Wire Line
+	7500 1350 7900 1350
+Wire Wire Line
+	7900 1350 7900 850 
+Connection ~ 7900 850 
+Wire Wire Line
+	7900 850  9400 850 
+Wire Wire Line
+	6300 1750 5300 1750
+Wire Wire Line
+	5300 1750 5300 1450
+Wire Wire Line
+	5300 1450 4800 1450
+Connection ~ 5300 850 
+Wire Wire Line
+	5300 850  7900 850 
+Wire Wire Line
+	5300 1450 5300 1300
+Connection ~ 5300 1450
+Wire Wire Line
+	5300 1000 5300 850 
+Wire Wire Line
+	7500 3450 7800 3450
+$Comp
+L ProjectLib:SIDE_WTCM-TR(3x4) RST1
+U 1 1 580F1A95
+P 4800 4300
+F 0 "RST1" V 5100 4150 60  0000 L CNN
+F 1 "IT-1185AU2-160G-G-TR" V 5200 3800 50  0000 L CNN
+F 2 "Button_Switch_SMD:SW_SPST_B3U-3000P" H 4799 4338 60  0001 C CNN
+F 3 "" H 4799 4338 60  0000 C CNN
+F 4 "Value 1" H 4800 4300 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 4800 4300 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 4800 4300 60  0001 C CNN "Fieldname3"
+	1    4800 4300
+	0    -1   1    0   
+$EndComp
+$Comp
+L ProjectLib:C C8
+U 1 1 5E7535B8
+P 5600 4250
+F 0 "C8" V 5550 4300 50  0000 L CNN
+F 1 "1uF/10V/10%/X5R/C0402" H 5700 4250 40  0000 L CNN
+F 2 "Capacitor_SMD:C_0402_1005Metric_Pad0.74x0.62mm_HandSolder" H 5600 4250 60  0001 C CNN
+F 3 "" H 5600 4250 60  0000 C CNN
+F 4 "Value 1" H 5600 4250 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 5600 4250 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 5600 4250 60  0001 C CNN "Fieldname3"
+F 7 "0" H 5600 4250 50  0001 C CNN "LCSC Extended"
+F 8 "C52923" H 5600 4250 50  0001 C CNN "LCSC Part"
+F 9 "0.0071" H 5600 4250 50  0001 C CNN "LCSC Price"
+F 10 "0.2840" H 5600 4250 50  0001 C CNN "LCSC ≤10 Fee"
+F 11 "Samsung Electro-Mechanics" H 5600 4250 50  0001 C CNN "Manufacturer_Name"
+F 12 "CL05A105KA5NQNC" H 5600 4250 50  0001 C CNN "Manufacturer_Part_Number"
+F 13 "0402" H 5600 4250 50  0001 C CNN "PACKAGE"
+	1    5600 4250
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:SJ RFID_3.3V1
+U 1 1 608CF7B6
+P 12100 2000
+AR Path="/608CF7B6" Ref="RFID_3.3V1"  Part="1" 
+AR Path="/602F0C3D/608CF7B6" Ref="BAT_SENS_E?"  Part="1" 
+F 0 "RFID_3.3V1" H 12050 2100 50  0000 C CNN
+F 1 "Opened" H 12100 1925 50  0000 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 12108 2062 20  0001 C CNN
+F 3 "" H 12100 2000 60  0000 C CNN
+F 4 "0" H 12100 2000 50  0001 C CNN "JLCPCB BOM"
+	1    12100 2000
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x08_Female J1
+U 1 1 608581AE
+P 13550 3350
+F 0 "J1" H 13578 3326 50  0000 L CNN
+F 1 "RFID RC522" H 13578 3235 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical" H 13550 3350 50  0001 C CNN
+F 3 "~" H 13550 3350 50  0001 C CNN
+F 4 "0" H 13550 3350 50  0001 C CNN "JLCPCB BOM"
+	1    13550 3350
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:Conn_01x03_Male J3
+U 1 1 6084A694
+P 15400 3400
+F 0 "J3" H 15372 3332 50  0000 R CNN
+F 1 "Neopixel" H 15372 3423 50  0000 R CNN
+F 2 "Connector_JST:JST_PH_B3B-PH-K_1x03_P2.00mm_Vertical" H 15400 3400 50  0001 C CNN
+F 3 "~" H 15400 3400 50  0001 C CNN
+F 4 "0" H 15400 3400 50  0001 C CNN "JLCPCB BOM"
+	1    15400 3400
+	-1   0    0    1   
+$EndComp
+$Comp
+L ProjectLib:R R2
+U 1 1 6082296A
+P 13450 1450
+F 0 "R2" H 13450 1250 50  0000 C CNN
+F 1 "10k/R0402" H 13450 1350 50  0000 C CNN
+F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 13450 1380 30  0001 C CNN
+F 3 "" V 13450 1450 30  0000 C CNN
+F 4 "Value 1" H 13450 1450 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 13450 1450 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 13450 1450 60  0001 C CNN "Fieldname3"
+F 7 "0" H 13450 1450 50  0001 C CNN "LCSC Extended"
+F 8 "C25744" H 13450 1450 50  0001 C CNN "LCSC Part"
+F 9 "0.0011" H 13450 1450 50  0001 C CNN "LCSC Price"
+F 10 "0.044" H 13450 1450 50  0001 C CNN "LCSC ≤10 Fee"
+F 11 "Uniroyal Elec" H 13450 1450 50  0001 C CNN "Manufacturer_Name"
+F 12 "0402WGF1002TCE" H 13450 1450 50  0001 C CNN "Manufacturer_Part_Number"
+F 13 "0402" H 13450 1450 50  0001 C CNN "PACKAGE"
+	1    13450 1450
+	-1   0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:R R1
+U 1 1 60819812
+P 13450 1250
+F 0 "R1" H 13450 1050 50  0000 C CNN
+F 1 "10k/R0402" H 13450 1150 50  0000 C CNN
+F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 13450 1180 30  0001 C CNN
+F 3 "" V 13450 1250 30  0000 C CNN
+F 4 "Value 1" H 13450 1250 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 13450 1250 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 13450 1250 60  0001 C CNN "Fieldname3"
+F 7 "0" H 13450 1250 50  0001 C CNN "LCSC Extended"
+F 8 "C25744" H 13450 1250 50  0001 C CNN "LCSC Part"
+F 9 "0.0011" H 13450 1250 50  0001 C CNN "LCSC Price"
+F 10 "0.044" H 13450 1250 50  0001 C CNN "LCSC ≤10 Fee"
+F 11 "Uniroyal Elec" H 13450 1250 50  0001 C CNN "Manufacturer_Name"
+F 12 "0402WGF1002TCE" H 13450 1250 50  0001 C CNN "Manufacturer_Part_Number"
+F 13 "0402" H 13450 1250 50  0001 C CNN "PACKAGE"
+	1    13450 1250
+	-1   0    0    1   
+$EndComp
+$Comp
+L Connector:Micro_SD_Card J2
+U 1 1 60806689
+P 15050 1350
+F 0 "J2" H 15000 2067 50  0000 C CNN
+F 1 "Micro_SD_Card" H 15000 1976 50  0000 C CNN
+F 2 "Connector_Card:microSD_HC_Wuerth_693072010801" H 16200 1650 50  0001 C CNN
+F 3 "http://katalog.we-online.de/em/datasheet/693072010801.pdf" H 15050 1350 50  0001 C CNN
+F 4 "0" H 15050 1350 50  0001 C CNN "JLCPCB BOM"
+	1    15050 1350
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:ESP32-WROVER-I U1
+U 1 1 6071AC4C
+P 6900 2450
+F 0 "U1" H 7100 3850 50  0000 C CNN
+F 1 "ESP32-WROVER" H 7300 3750 50  0000 C CNN
+F 2 "ESP32-DevKit-LiPo-Rev:XCVR_ESP32-WROVER-I" H 7650 1300 50  0001 C CNN
+F 3 "https://www.espressif.com/sites/default/files/documentation/esp32-s2-wroom_esp32-s2-wroom-i_datasheet_en.pdf" H 6600 1650 50  0001 C CNN
+F 4 "Module: combo; GPIO, I2C x2, I2S x2, SDIO, SPI x3, UART x3; U.FL" H 6900 2450 50  0001 C CNN "DESCRIPTION"
+F 5 "1904-1008-1-ND" H 6900 2450 50  0001 C CNN "DIGI-KEY_PART_NUMBER"
+F 6 "https://www.digikey.com/product-detail/en/espressif-systems/ESP32-WROVER-I/1904-1008-1-ND/8544303?utm_source=snapeda&utm_medium=aggregator&utm_campaign=symbol" H 6900 2450 50  0001 C CNN "DIGI-KEY_PURCHASE_URL"
+F 7 "Espressif Systems" H 6900 2450 50  0001 C CNN "MF"
+F 8 "ESP32-WROVER-I" H 6900 2450 50  0001 C CNN "MP"
+F 9 "QFN-38_EP_18.0x31.4x1.27P" H 6900 2450 50  0001 C CNN "PACKAGE"
+F 10 "1" H 6900 2450 50  0001 C CNN "LCSC Extended"
+F 11 "C503591" H 6900 2450 50  0001 C CNN "LCSC Part"
+F 12 "3.3455" H 6900 2450 50  0001 C CNN "LCSC Price"
+F 13 "Espressif Systems" H 6900 2450 50  0001 C CNN "Manufacturer_Name"
+F 14 "ESP32-WROVER-B" H 6900 2450 50  0001 C CNN "Manufacturer_Part_Number"
+	1    6900 2450
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:Fiducial FID4
+U 1 1 5C62EE3A
+P 9900 10450
+F 0 "FID4" H 10028 10496 50  0000 L CNN
+F 1 "Fiducial" H 10028 10405 50  0000 L CNN
+F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 9610 10375 20  0001 C CNN
+F 3 "" V 9850 10450 60  0000 C CNN
+F 4 "0" H 9900 10450 50  0001 C CNN "JLCPCB BOM"
+	1    9900 10450
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:Fiducial FID3
+U 1 1 5E1BFBF2
+P 8700 10450
+F 0 "FID3" H 8828 10496 50  0000 L CNN
+F 1 "Fiducial" H 8828 10405 50  0000 L CNN
+F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 8410 10375 20  0001 C CNN
+F 3 "" V 8650 10450 60  0000 C CNN
+F 4 "0" H 8700 10450 50  0001 C CNN "JLCPCB BOM"
+	1    8700 10450
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:Fiducial FID2
+U 1 1 5E1AB240
+P 7500 10450
+F 0 "FID2" H 7628 10496 50  0000 L CNN
+F 1 "Fiducial" H 7628 10405 50  0000 L CNN
+F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 7210 10375 20  0001 C CNN
+F 3 "" V 7450 10450 60  0000 C CNN
+F 4 "0" H 7500 10450 50  0001 C CNN "JLCPCB BOM"
+	1    7500 10450
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:Fiducial FID1
+U 1 1 5E1AAE8C
+P 6300 10450
+F 0 "FID1" H 6428 10496 50  0000 L CNN
+F 1 "Fiducial" H 6428 10405 50  0000 L CNN
+F 2 "Fiducial:Fiducial_1mm_Mask3mm" H 6010 10375 20  0001 C CNN
+F 3 "" V 6250 10450 60  0000 C CNN
+F 4 "0" H 6300 10450 50  0001 C CNN "JLCPCB BOM"
+	1    6300 10450
+	1    0    0    -1  
+$EndComp
+$Comp
+L ProjectLib:R R13
+U 1 1 58292085
+P 5300 1150
+F 0 "R13" H 5300 1250 50  0000 C CNN
+F 1 "10k/R0402" H 5300 1050 50  0000 C CNN
+F 2 "Resistor_SMD:R_0402_1005Metric_Pad0.72x0.64mm_HandSolder" H 5300 1080 30  0001 C CNN
+F 3 "" V 5300 1150 30  0000 C CNN
+F 4 "Value 1" H 5300 1150 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 5300 1150 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 5300 1150 60  0001 C CNN "Fieldname3"
+F 7 "0" H 5300 1150 50  0001 C CNN "LCSC Extended"
+F 8 "C25744" H 5300 1150 50  0001 C CNN "LCSC Part"
+F 9 "0.0011" H 5300 1150 50  0001 C CNN "LCSC Price"
+F 10 "0.044" H 5300 1150 50  0001 C CNN "LCSC ≤10 Fee"
+F 11 "Uniroyal Elec" H 5300 1150 50  0001 C CNN "Manufacturer_Name"
+F 12 "0402WGF1002TCE" H 5300 1150 50  0001 C CNN "Manufacturer_Part_Number"
+F 13 "0402" H 5300 1150 50  0001 C CNN "PACKAGE"
+	1    5300 1150
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	13100 1450 13100 2000
+$Comp
+L ProjectLib:D_Schottky D7
+U 1 1 605C419D
+P 12800 2000
+AR Path="/605C419D" Ref="D7"  Part="1" 
+AR Path="/602F0C3D/605C419D" Ref="D?"  Part="1" 
+AR Path="/60E4CE84/605C419D" Ref="D?"  Part="1" 
+F 0 "D7" H 12900 1900 50  0000 R CNN
+F 1 "1N5819W/SOD123" H 13100 2100 50  0000 R CNN
+F 2 "Diode_SMD:D_SOD-123" H 12800 2000 60  0001 C CNN
+F 3 "" H 12800 2000 60  0000 C CNN
+F 4 "Value 1" H 12800 2000 60  0001 C CNN "Fieldname 1"
+F 5 "Value2" H 12800 2000 60  0001 C CNN "Fieldname2"
+F 6 "Value3" H 12800 2000 60  0001 C CNN "Fieldname3"
+F 7 "SCHOTTKY (SBD) SOD-123 ROHS" H 12800 2000 50  0001 C CNN "Description"
+F 8 "1" H 12800 2000 50  0001 C CNN "LCSC Extended"
+F 9 "C402219" H 12800 2000 50  0001 C CNN "LCSC Part"
+F 10 "0.0205" H 12800 2000 50  0001 C CNN "LCSC Price"
+F 11 "0.4100" H 12800 2000 50  0001 C CNN "LCSC ≤10 Fee"
+F 12 "LGE" H 12800 2000 50  0001 C CNN "Manufacturer_Name"
+F 13 "1N5819W" H 12800 2000 50  0001 C CNN "Manufacturer_Part_Number"
+F 14 "SOD-123" H 12800 2000 50  0001 C CNN "PACKAGE"
+	1    12800 2000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	12450 2000 12650 2000
+Connection ~ 12450 2000
+Wire Wire Line
+	12950 2000 13100 2000
+Connection ~ 13100 2000
+Wire Wire Line
+	13100 2000 13100 2550
 $EndSCHEMATC
