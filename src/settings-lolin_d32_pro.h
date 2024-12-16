@@ -32,18 +32,23 @@
         #endif
     #endif
 
-    // RFID (via SPI)
-    #define RST_PIN                         99          // Not necessary but has to be set anyway; so let's use a dummy-number
-    #define RFID_CS                         21          // GPIO for chip select (RFID)
-    #define RFID_MOSI                       13          // GPIO for master out slave in (RFID)
-    #define RFID_MISO                       15          // GPIO for master in slave out (RFID)
-    #define RFID_SCK                        14          // GPIO for clock-signal (RFID)
-
     #ifdef RFID_READER_TYPE_PN5180
         #define RFID_BUSY                   33          // PN5180 BUSY PIN
         #define RFID_RST                    22          // PN5180 RESET PIN
         #define RFID_IRQ                    39          // PN5180 IRQ PIN (only needed for low power card detection)
+    #else
+        #define RFID_RST                    99           //Olny need for MRFC522 I2C but has to be set anyway; so let's use a dummy-number
+        
+        #ifdef RFID_READER_TYPE_MFRC522_SPI
+            // RFID (via SPI)
+            #define RFID_CS                 21          // GPIO for chip select (RFID)
+            #define RFID_MOSI               13          // GPIO for master out slave in (RFID)
+            #define RFID_MISO               15          // GPIO for master in slave out (RFID)
+            #define RFID_SCK                14          // GPIO for clock-signal (RFID)
+        #endif
     #endif
+
+
     // I2S (DAC)
     #define I2S_DOUT                        25          // Digital out (I2S)
     #define I2S_BCLK                        27          // BCLK (I2S)
@@ -64,7 +69,7 @@
     #define NEXT_BUTTON                     33          // Button 0: GPIO to detect next
     #define PREVIOUS_BUTTON                  2          // Button 1: GPIO to detect previous
     #define PAUSEPLAY_BUTTON                36          // Button 2: GPIO to detect pause/play
-    #define ROTARYENCODER_BUTTON            32          // (set to 99 to disable; 0->39 for GPIO; 100->115 for port-expander)
+    #define ROTARYENCODER_BUTTON            5          // (set to 99 to disable; 0->39 for GPIO; 100->115 for port-expander)
     #define BUTTON_4                        99          // Button 4: unnamed optional button
     #define BUTTON_5                        99          // Button 5: unnamed optional button
 
@@ -78,8 +83,8 @@
 
     // I2C-configuration (necessary for RC522 [only via i2c - not spi!] or port-expander)
     #ifdef I2C_2_ENABLE
-        #define ext_IIC_CLK                 5           // i2c-SCL (clock)
-        #define ext_IIC_DATA                2           // i2c-SDA (data)
+        #define ext_IIC_CLK                 22           // i2c-SCL (clock)
+        #define ext_IIC_DATA                21           // i2c-SDA (data)
     #endif
 
     // Wake-up button => this also is the interrupt-pin if port-expander is enabled!
@@ -88,7 +93,7 @@
     #define WAKEUP_BUTTON                   ROTARYENCODER_BUTTON // Defines the button that is used to wake up ESPuino from deepsleep.
 
     // (optional) Power-control
-    #define POWER                           5           // GPIO used to drive transistor-circuit, that switches off peripheral devices while ESP32-deepsleep
+    //#define POWER                           5           // GPIO used to drive transistor-circuit, that switches off peripheral devices while ESP32-deepsleep
     #ifdef POWER
         //#define INVERT_POWER                          // If enabled, use inverted logic for POWER circuit, that means peripherals are turned off by writing HIGH
     #endif

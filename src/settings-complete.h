@@ -31,18 +31,21 @@
 		#endif
 	#endif
 
-	// RFID (via SPI)
-	#define RST_PIN                         99		// Not necessary for RC522 but has to be set anyway; so let's use a dummy-number
-	#define RFID_CS                         21		// GPIO for chip select (RFID)
-	#define RFID_MOSI                       23		// GPIO for master out slave in (RFID)
-	#define RFID_MISO                       19		// GPIO for master in slave out (RFID)
-	#define RFID_SCK                        18		// GPIO for clock-signal (RFID)
-
 	// RFID (PN5180 only; not necessary for RC522)
 	#ifdef RFID_READER_TYPE_PN5180
 		#define RFID_BUSY		33		// PN5180 BUSY PIN
 		#define RFID_RST		22		// PN5180 RESET PIN
 		#define RFID_IRQ		32		// PN5180 IRQ PIN (only needed for low power card detection)
+    #else
+        #define RFID_RST                    99           //Olny need for MRFC522 I2C but has to be set anyway; so let's use a dummy-number
+        
+        #ifdef RFID_READER_TYPE_MFRC522_SPI
+            // RFID (via SPI)
+            #define RFID_CS                 21          // GPIO for chip select (RFID)
+            #define RFID_MOSI               23          // GPIO for master out slave in (RFID)
+            #define RFID_MISO               19          // GPIO for master in slave out (RFID)
+            #define RFID_SCK                18          // GPIO for clock-signal (RFID)
+        #endif
 	#endif
 
 	// I2S (DAC)

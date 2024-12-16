@@ -28,10 +28,10 @@ static void Rfid_Task(void *parameter);
 
 	#ifdef RFID_READER_TYPE_MFRC522_I2C
 extern TwoWire i2cBusTwo;
-static MFRC522_I2C mfrc522(MFRC522_ADDR, MFRC522_RST_PIN, &i2cBusTwo);
+static MFRC522_I2C mfrc522(MFRC522_ADDR, RFID_RST, &i2cBusTwo);
 	#endif
 	#ifdef RFID_READER_TYPE_MFRC522_SPI
-static MFRC522 mfrc522(RFID_CS, RST_PIN);
+static MFRC522 mfrc522(RFID_CS, RFID_RST);
 	#endif
 
 void Rfid_Init(void) {
@@ -45,7 +45,11 @@ void Rfid_Init(void) {
 	mfrc522.PCD_Init();
 	delay(10);
 	// Get the MFRC522 firmware version, should be 0x91 or 0x92
+	#if defined(RFID_READER_TYPE_MFRC522_I2C)
+	byte firmwareVersion = mfrc522.PCD_ReadRegister(MFRC522_I2C::VersionReg);
+	#else
 	byte firmwareVersion = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+	#endif
 	Log_Printf(LOGLEVEL_DEBUG, "RC522 firmware version=%#lx", firmwareVersion);
 
 	mfrc522.PCD_SetAntennaGain(rfidGain);
