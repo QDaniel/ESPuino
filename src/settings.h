@@ -186,6 +186,11 @@
 		constexpr uint32_t deepsleepTimeAfterBootFails = 20;      // Automatic restart takes place if boot was not successful after this period (in seconds)
 	#endif
 
+	// CLoud
+	// Automatic download for unknown Rfid-Tags
+	#define CLOUD_URL "http://quino.0011.de" 
+	#define CLOUD_STATUSUPDATE_ENABLE                     // Update Status to CLoud Server
+
 	// FTP
 	// Nothing to be configured here...
 	// Default user/password is esp32/esp32 but can be changed via webgui

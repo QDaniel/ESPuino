@@ -31,6 +31,7 @@
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 #include <nvs.h>
+#include "Cloud.h"
 
 typedef struct {
 	char nvsKey[13];
@@ -1155,6 +1156,7 @@ bool processJsonRequest(char *_serialJson) {
 
 // Sends JSON-answers via websocket
 void Web_SendWebsocketData(uint32_t client, WebsocketCodeType code) {
+	Cloud_SendStatusInfo();
 	if (!webserverStarted) {
 		// webserver not yet started
 		return;

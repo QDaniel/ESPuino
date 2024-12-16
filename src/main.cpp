@@ -26,6 +26,7 @@
 #include "System.h"
 #include "Web.h"
 #include "Wlan.h"
+#include "Cloud.h"
 #include "revision.h"
 
 #include <Wire.h>
@@ -172,6 +173,7 @@ void setup() {
 	// print SD card info
 	SdCard_PrintInfo();
 
+    Cloud_Init();
 	Ftp_Init();
 	Mqtt_Init();
 #ifndef PN5180_ENABLE_LPCD
