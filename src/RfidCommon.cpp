@@ -2,6 +2,7 @@
 #include "settings.h"
 
 #include "AudioPlayer.h"
+#include "Cloud.h"
 #include "Cmd.h"
 #include "Common.h"
 #include "Log.h"
@@ -11,7 +12,7 @@
 #include "Rfid.h"
 #include "System.h"
 #include "Web.h"
-#include "Cloud.h"
+
 
 unsigned long Rfid_LastRfidCheckTimestamp = 0;
 char gCurrentRfidTagId[cardIdStringSize] = ""; // No crap here as otherwise it could be shown in GUI
@@ -45,7 +46,9 @@ void Rfid_PreferenceLookupHandler(void) {
 			s = gPrefsRfid.getString(gCurrentRfidTagId, "-1"); // Try to lookup rfidId in NVS
 		}
 		if (!s.compareTo("-1")) {
-			if(Cloud_Scan(gCurrentRfidTagId)) return;
+			if (Cloud_Scan(gCurrentRfidTagId)) {
+				return;
+			}
 			Log_Println(rfidTagUnknownInNvs, LOGLEVEL_ERROR);
 			System_IndicateError();
 			// allow to escape from bluetooth mode with an unknown card, switch back to normal mode

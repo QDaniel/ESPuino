@@ -44,12 +44,12 @@ void Rfid_Init(void) {
 	#if defined(RFID_READER_TYPE_MFRC522_I2C) || defined(RFID_READER_TYPE_MFRC522_SPI)
 	mfrc522.PCD_Init();
 	delay(10);
-	// Get the MFRC522 firmware version, should be 0x91 or 0x92
-	#if defined(RFID_READER_TYPE_MFRC522_I2C)
+		// Get the MFRC522 firmware version, should be 0x91 or 0x92
+		#if defined(RFID_READER_TYPE_MFRC522_I2C)
 	byte firmwareVersion = mfrc522.PCD_ReadRegister(MFRC522_I2C::VersionReg);
-	#else
+		#else
 	byte firmwareVersion = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
-	#endif
+		#endif
 	Log_Printf(LOGLEVEL_DEBUG, "RC522 firmware version=%#lx", firmwareVersion);
 
 	mfrc522.PCD_SetAntennaGain(rfidGain);
