@@ -15,7 +15,6 @@
 #include <deque>
 #include <stdint.h>
 
-
 struct SpiRamCAllocator {
 	void *allocate(size_t size) {
 		return ps_malloc(size);
@@ -52,7 +51,9 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 	Log_Print(etag, LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	http->begin(uri);
-	if(String(etag).startsWith("\"")) http->addHeader("If-None-Match", etag);
+	if (String(etag).startsWith("\"")) {
+		http->addHeader("If-None-Match", etag);
+	}
 	http->addHeader("X-Ident", Wlan_GetMacAddress());
 
 	int httpCode = http->GET();
@@ -109,7 +110,9 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 	Log_Print(etag, LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	http->begin(uri);
-	if(String(etag).startsWith("\"")) http->addHeader("If-None-Match", etag);
+	if (String(etag).startsWith("\"")) {
+		http->addHeader("If-None-Match", etag);
+	}
 	http->addHeader("X-Ident", Wlan_GetMacAddress());
 
 	int httpCode = http->GET();
