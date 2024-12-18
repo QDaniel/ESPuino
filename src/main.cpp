@@ -31,7 +31,6 @@
 
 #include <Wire.h>
 
-
 bool gPlayLastRfIdWhenWiFiConnected = false;
 bool gTriedToConnectToHost = false;
 

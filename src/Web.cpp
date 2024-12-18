@@ -33,7 +33,6 @@
 #include <esp_task_wdt.h>
 #include <nvs.h>
 
-
 typedef struct {
 	char nvsKey[13];
 	char nvsEntry[275];
