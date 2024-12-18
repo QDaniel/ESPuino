@@ -1,21 +1,20 @@
 #include "Cloud.h"
 
+#include "ArduinoJson.h"
+#include "AsyncJson.h"
+#include "AudioPlayer.h"
+#include "Cmd.h"
+#include "Log.h"
+#include "MemX.h"
+#include "Playlist.h"
+#include "Rfid.h"
 #include "SdCard.h"
+#include "Wlan.h"
 
-#ifdef CLOUD_URL
-	#include "ArduinoJson.h"
-	#include "AsyncJson.h"
-	#include "AudioPlayer.h"
-	#include "Cmd.h"
-	#include "Log.h"
-	#include "MemX.h"
-	#include "Playlist.h"
-	#include "Rfid.h"
-	#include "Wlan.h"
+#include <HTTPClient.h>
+#include <deque>
+#include <stdint.h>
 
-	#include <HTTPClient.h>
-	#include <deque>
-	#include <stdint.h>
 
 struct SpiRamCAllocator {
 	void *allocate(size_t size) {
@@ -27,42 +26,12 @@ struct SpiRamCAllocator {
 };
 using SpiRamJsonDocument = BasicJsonDocument<SpiRamCAllocator>;
 
-/*
-cardType (dec / hex)
-  0 / 0x00 = Device Only / Saved in old Tagfile
-  1 / 0x01 = Reuseable / Old Style
- 17 / 0x11 = Web Card / Single File
- 18 / 0x12 = Web Card / Catalog File
-173 / 0xAD = Admin Card (playMode = Cmd)
-*/
-
-/*
-Admin - CMDs
-100 / 0x64 = LOCK_BUTTONS                   # Locks all buttons and rotary encoder
-101 / 0x65 = SLEEP_TIMER_MOD_15             # Puts uC into deepsleep after 15 minutes + LED-DIMM
-102 / 0x66 = SLEEP_TIMER_MOD_30             # Puts uC into deepsleep after 30 minutes + LED-DIMM
-103 / 0x67 = SLEEP_TIMER_MOD_60             # Puts uC into deepsleep after 60 minutes + LED-DIMM
-104 / 0x68 = SLEEP_TIMER_MOD_120            # Puts uC into deepsleep after 120 minutes + LED-DIMM
-105 / 0x69 = SLEEP_AFTER_END_OF_TRACK       # Puts uC into deepsleep after track is finished + LED-DIMM
-106 / 0x6A = SLEEP_AFTER_END_OF_PLAYLIST    # Puts uC into deepsleep after playlist is finished + LED-DIMM
-107 / 0x6B = SLEEP_AFTER_5_TRACKS           # Puts uC into deepsleep after five tracks
-110 / 0x6E = REPEAT_PLAYLIST                # Changes active playmode to endless-loop (for a playlist)
-111 / 0x6F = REPEAT_TRACK                   # Changes active playmode to endless-loop (for a single track)
-120 / 0x78 = DIMM_LEDS_NIGHTMODE            # Changes LED-brightness
-130 / 0x82 = WIFI_STATUS_TOGGLE             # Toggles WiFi-status
-131 / 0x83 = WIFI_STATUS_ENABLE             # Enable WiFi
-132 / 0x84 = TOGGLE_WIFI_DISABLE            # Disable WiFi
-140 / 0x8C = PAUSE_PLAY                     # Pause / Play Button
-141 / 0x8D = PREV_TRACK                     # Prev Button
-142 / 0x8E = NEXT_TRACK                     # Next Button
-*/
+#ifdef CLOUD_INFO_URL
 
 	#define CLOUD_DL_CHUNK_SIZE 1024
 const char *m3uext = ".m3u";
 String CloudDataDir = "/CloudCache";
 const char *DirDelim = "/";
-String DataBaseDir = "/";
-String Escape = "\"";
 std::deque<String> dlList;
 TaskHandle_t dlTaskHandle = NULL;
 
@@ -80,12 +49,10 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 	Log_Print(path, LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	Log_Print(" ETAG: ", LOGLEVEL_INFO, false);
-	Log_Print(Escape.c_str(), LOGLEVEL_INFO, false);
 	Log_Print(etag, LOGLEVEL_INFO, false);
-	Log_Print(Escape.c_str(), LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	http->begin(uri);
-	http->addHeader("If-None-Match", etag);
+	if(String(etag).startsWith("\"")) http->addHeader("If-None-Match", etag);
 	http->addHeader("X-Ident", Wlan_GetMacAddress());
 
 	int httpCode = http->GET();
@@ -139,12 +106,10 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 	Log_Print(path, LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	Log_Print(" ETAG: ", LOGLEVEL_INFO, false);
-	Log_Print(Escape.c_str(), LOGLEVEL_INFO, false);
 	Log_Print(etag, LOGLEVEL_INFO, false);
-	Log_Print(Escape.c_str(), LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	http->begin(uri);
-	http->addHeader("If-None-Match", etag);
+	if(String(etag).startsWith("\"")) http->addHeader("If-None-Match", etag);
 	http->addHeader("X-Ident", Wlan_GetMacAddress());
 
 	int httpCode = http->GET();
@@ -232,35 +197,15 @@ void Cloud_Dl(void *parameter) {
 
 			File fileO = gFSystem.open(rfid, FILE_READ);
 			File fileT = gFSystem.open(tempUp, FILE_WRITE);
-			bool incomplete = false;
-
 			while (fileO.available()) {
 				String line = fileO.readStringUntil('\n');
 				line.trim();
-				fileT.println(line.startsWith(uri) ? path : line);
-				if (!line.startsWith(uri)) {
-					incomplete = incomplete || line.startsWith("http:") || line.startsWith("https:");
-				}
+				fileT.println(!line.compareTo(uri) == 0 ? path : line);
 			}
 			fileO.close();
 			fileT.close();
 			gFSystem.remove(rfid);
 			gFSystem.rename(tempUp, rfid);
-
-			if (!incomplete) {
-				fileO = gFSystem.open(rfid, FILE_READ);
-				fileT = gFSystem.open(tempUp, FILE_WRITE);
-
-				while (fileO.available()) {
-					String line = fileO.readStringUntil('\n');
-					line.trim();
-					fileT.println(line.startsWith("#INCOMPLETE") ? "#COMPLETED" : line);
-				}
-				fileO.close();
-				fileT.close();
-				gFSystem.remove(rfid);
-				gFSystem.rename(tempUp, rfid);
-			}
 			// gPlayProperties.playlist
 		}
 	}
@@ -288,7 +233,7 @@ bool Cloud_Scan(const char *rfidId) {
 	strcat(buf, rfidId);
 	strcat(buf, m3uext);
 
-	String url = String(CLOUD_URL) + "/api/rfid/info/" + rfidId;
+	String url = String(CLOUD_INFO_URL) + rfidId;
 	if (!gFSystem.exists(buf)) {
 		if (!gFSystem.exists(CloudDataDir)) {
 			gFSystem.mkdir(CloudDataDir);
@@ -317,48 +262,59 @@ bool Cloud_Scan(const char *rfidId) {
 				Log_Printf(LOGLEVEL_INFO, "ETag Found: %s", etag);
 				Log_Println(etag, LOGLEVEL_INFO);
 			}
-			lineh = file.readStringUntil('\n');
-			incomplete = lineh.startsWith("#INCOMPLETE");
-			if (lineh.startsWith("#CMD:")) {
-				Command = lineh.charAt(5);
-			}
 
-			if (incomplete) {
-				Log_Println("IS INCOMPLETE", LOGLEVEL_INFO);
-				if (!gFSystem.exists(DataBaseDir + rfidId)) {
-					gFSystem.mkdir(DataBaseDir + rfidId);
-				}
+			String dirName = "";
+			String fileName = "";
+			String fileSizeStr = "";
+			int fileSize = -1;
 
-				int row = 0;
-				char str[10];
-				String fExt = "mp3";
-				while (file.available()) {
-					String line = file.readStringUntil('\n');
-					if (!line.startsWith("#")) {
-						row++;
-						if (!line.startsWith("/")) {
-							// this something we have to save
-							line.trim();
-							if (line.indexOf(".flac") > 0) {
-								fExt = "flac";
-							} else if (line.indexOf(".ogg") > 0) {
-								fExt = "ogg";
-							}
-							sprintf(str, "/%03d.%s;", row, fExt.c_str());
-							line = String(buf) + ";*;" + DataBaseDir + rfidId + str + line;
-							Log_Printf(LOGLEVEL_INFO, "DLQueueing: %s", line);
-							if (std::find(dlList.begin(), dlList.end(), line.c_str()) == dlList.end()) {
-								Cloud_allocAndSave(&dlList, line);
-							}
+			while (file.available() || Command != 0) {
+				lineh = file.readStringUntil('\n');
+				lineh.trim();
+				if (lineh.startsWith("#CMD:")) {
+					Command = lineh.substring(5).toInt();
+				} else {
+					if (lineh.startsWith("#DL-FILE:")) {
+						char *line = x_strdup(lineh.substring(8).c_str());
+						dirName = strsep(&line, ";");
+						fileName = strsep(&line, ";");
+						fileSizeStr = strsep(&line, ";");
+						if (!fileSizeStr.isEmpty()) {
+							fileSize = fileSizeStr.toInt();
+						}
+					} else if (!fileName.isEmpty() && (lineh.startsWith("http://") || lineh.startsWith("https://"))) {
+						if (!dirName.isEmpty() && !gFSystem.exists(dirName)) {
+							gFSystem.mkdir(dirName);
+						}
+						bool mustDl = true;
+						if (fileSize > 0 && gFSystem.exists(dirName + fileName)) {
+							File rf = gFSystem.open(dirName + fileName);
+							mustDl = rf.size() != fileSize;
+							rf.close();
+						}
+
+						String line = String(buf) + ";*;" + dirName + fileName + ";" + line;
+						Log_Printf(LOGLEVEL_INFO, "DL-Queueing: %s", line);
+						if (std::find(dlList.begin(), dlList.end(), line.c_str()) == dlList.end()) {
+							Cloud_allocAndSave(&dlList, line);
 						}
 					}
 				}
-				if (dlTaskHandle == NULL) {
-					xTaskCreate(Cloud_Dl, "DownloadUri", 6000, NULL, 1, &dlTaskHandle);
+
+				if (!lineh.startsWith("#")) {
+					dirName = "";
+					fileName = "";
+					fileSizeStr = "";
+					fileSize = -1;
 				}
 			}
+			file.close();
+
+			if (dlTaskHandle == NULL && dlList.size() > 0) {
+				xTaskCreate(Cloud_Dl, "DownloadUri", 6000, NULL, 1, &dlTaskHandle);
+			}
 		}
-		file.close();
+
 		if (Command > 0) {
 			Cmd_Action(Command);
 		} else {
@@ -374,15 +330,22 @@ bool Cloud_Scan(const char *rfidId) {
 	return false;
 }
 
-	#ifdef CLOUD_STATUSUPDATE_ENABLE
+#else
+void Cloud_Init(void) {
+}
+bool Cloud_Scan(const char *rfidId) {
+	return false;
+#endif
+
+#ifdef CLOUD_STAT_URL
 
 JsonObject Cloud_BuildStatus(void) {
 
-		#ifdef BOARD_HAS_PSRAM
+	#ifdef BOARD_HAS_PSRAM
 	SpiRamJsonDocument doc(1024);
-		#else
+	#else
 	StaticJsonDocument<1024> doc;
-		#endif
+	#endif
 	JsonObject object = doc.to<JsonObject>();
 	object["rfidId"] = gCurrentRfidTagId;
 	object["rssi"] = Wlan_GetRssi();
@@ -404,7 +367,7 @@ JsonObject Cloud_BuildStatus(void) {
 	return object;
 }
 
-String updateUrl = String(CLOUD_URL) + "/api/device/" + Wlan_GetMacAddress();
+String updateUrl = String(CLOUD_STAT_URL) + Wlan_GetMacAddress();
 void Cloud_SendStatusInfo(void) {
 	uint8_t *buf = static_cast<uint8_t *>(x_malloc(1024));
 	JsonObject obj = Cloud_BuildStatus();
@@ -415,17 +378,7 @@ void Cloud_SendStatusInfo(void) {
 	httpClSc.POST(buf, l);
 }
 
-	#else
-void Cloud_SendStatusInfo(void) {
-}
-	#endif
-
 #else
-void Cloud_Init(void) {
-}
-bool Cloud_Scan(const char *rfidId) {
-	return false;
-}
-void Cloud_SendStatusInfo(void) {
-}
+	void Cloud_SendStatusInfo(void) {
+	}
 #endif

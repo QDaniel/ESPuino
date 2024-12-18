@@ -188,8 +188,8 @@
 
 	// CLoud
 	// Automatic download for unknown Rfid-Tags
-	#define CLOUD_URL "http://quino.0011.de" 
-	#define CLOUD_STATUSUPDATE_ENABLE                     // Update Status to CLoud Server
+	#define CLOUD_INFO_URL "http://quino.0011.de/api/rfid/info/" // Rfid Tag appends
+	#define CLOUD_STAT_URL "http://quino.0011.de/api/device/" // Update Status to CLoud Server, MAC Address appends
 
 	// FTP
 	// Nothing to be configured here...
