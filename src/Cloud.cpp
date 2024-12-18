@@ -100,7 +100,7 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 	return ret;
 }
 bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const char *temp, const char *etag) {
-	bool ret;
+	bool ret = false;
 	Log_Print("DownloadFileM3U http uri: ", LOGLEVEL_INFO, true);
 	Log_Print(uri, LOGLEVEL_INFO, false);
 	Log_Print(" -> ", LOGLEVEL_INFO, false);
@@ -122,7 +122,7 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 		http->headers();
 		String etagStr = http->header("ETag");
 
-		if (etagStr.isEmpty() || etagStr.compareTo(etag) != 0) {
+		if (!etagStr.isEmpty() && etagStr.compareTo(etag) != 0) {
 			File file = gFSystem.open(temp, FILE_WRITE);
 			file.print("#");
 			file.println(etagStr.c_str());
@@ -156,8 +156,8 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 			Log_Println("Download END", LOGLEVEL_DEBUG);
 			gFSystem.rename(temp, path);
 			Log_Printf(LOGLEVEL_DEBUG, "Speed: %d bytes/sec\n", TOTAL_SIZE / time_ / 1000);
+			ret = true;
 		}
-		ret = true;
 	} else {
 		Log_Printf(LOGLEVEL_INFO, "HTTP Failed, Status: %d\n", httpCode);
 		ret = false;
