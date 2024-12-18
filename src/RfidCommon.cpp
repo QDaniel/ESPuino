@@ -13,7 +13,6 @@
 #include "System.h"
 #include "Web.h"
 
-
 unsigned long Rfid_LastRfidCheckTimestamp = 0;
 char gCurrentRfidTagId[cardIdStringSize] = ""; // No crap here as otherwise it could be shown in GUI
 #ifdef DONT_ACCEPT_SAME_RFID_TWICE_ENABLE

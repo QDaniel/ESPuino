@@ -7,6 +7,7 @@
 #include "AsyncJson.h"
 #include "AudioPlayer.h"
 #include "Battery.h"
+#include "Cloud.h"
 #include "Cmd.h"
 #include "Common.h"
 #include "ESPAsyncWebServer.h"
@@ -31,7 +32,7 @@
 #include <WiFi.h>
 #include <esp_task_wdt.h>
 #include <nvs.h>
-#include "Cloud.h"
+
 
 typedef struct {
 	char nvsKey[13];
