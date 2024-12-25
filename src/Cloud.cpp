@@ -31,6 +31,9 @@ using SpiRamJsonDocument = BasicJsonDocument<SpiRamCAllocator>;
 const char *m3uext = ".m3u";
 String CloudDataDir = "/CloudCache";
 const char *DirDelim = "/";
+const char *headerKeys[] = {"ETag"};
+const size_t headerKeysCount = 1;
+
 std::deque<String> dlList;
 TaskHandle_t dlTaskHandle = NULL;
 
@@ -110,6 +113,7 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 	Log_Print(etag, LOGLEVEL_INFO, false);
 	Log_Print("\n", LOGLEVEL_INFO, false);
 	http->begin(uri);
+	http->collectHeaders(headerKeys, headerKeysCount);
 	if (String(etag).startsWith("\"")) {
 		http->addHeader("If-None-Match", etag);
 	}
@@ -119,10 +123,11 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 	Log_Printf(LOGLEVEL_INFO, "http result: %d", httpCode);
 
 	if (httpCode == 200) {
-		http->headers();
 		String etagStr = http->header("ETag");
-
+		Log_Printf(LOGLEVEL_DEBUG, "ETag: %s", etagStr.c_str());
 		if (!etagStr.isEmpty() && etagStr.compareTo(etag) != 0) {
+			Log_Printf(LOGLEVEL_DEBUG, "Open File: %s", temp);
+
 			File file = gFSystem.open(temp, FILE_WRITE);
 			file.print("#");
 			file.println(etagStr.c_str());
@@ -249,7 +254,6 @@ bool Cloud_Scan(const char *rfidId) {
 		Log_Printf(LOGLEVEL_INFO, "File Exists: %s checking file ...", buf);
 
 		File file = gFSystem.open(buf, FILE_READ);
-		bool incomplete = false;
 		int Command = 0;
 
 		char etag[100];
@@ -296,10 +300,12 @@ bool Cloud_Scan(const char *rfidId) {
 							rf.close();
 						}
 
-						String line = String(buf) + ";*;" + dirName + fileName + ";" + line;
-						Log_Printf(LOGLEVEL_INFO, "DL-Queueing: %s", line);
-						if (std::find(dlList.begin(), dlList.end(), line.c_str()) == dlList.end()) {
-							Cloud_allocAndSave(&dlList, line);
+						if (mustDl) {
+							String line = String(buf) + ";*;" + dirName + fileName + ";" + line;
+							Log_Printf(LOGLEVEL_INFO, "DL-Queueing: %s", line);
+							if (std::find(dlList.begin(), dlList.end(), line.c_str()) == dlList.end()) {
+								Cloud_allocAndSave(&dlList, line);
+							}
 						}
 					}
 				}
