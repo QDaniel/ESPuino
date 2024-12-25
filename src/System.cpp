@@ -38,10 +38,19 @@ volatile uint8_t System_OperationMode;
 void System_SleepHandler(void);
 void System_DeepSleepManager(void);
 
+// Init only NVS required for LPCD
+void System_Init_LPCD(void) {
+#ifdef PN5180_ENABLE_LPCD
+	gPrefsRfid.begin(prefsRfidNamespace);
+#endif
+}
+
 void System_Init(void) {
 	srand(esp_random());
 
+#ifndef PN5180_ENABLE_LPCD
 	gPrefsRfid.begin(prefsRfidNamespace);
+#endif
 	gPrefsSettings.begin(prefsSettingsNamespace);
 
 	// Get maximum inactivity-time from NVS
@@ -148,6 +157,7 @@ void System_SetOperationMode(uint8_t opMode) {
 	uint8_t currentOperationMode = gPrefsSettings.getUChar("operationMode", OPMODE_NORMAL);
 	if (currentOperationMode != opMode) {
 		if (gPrefsSettings.putUChar("operationMode", opMode)) {
+			Log_Println(restartAfterOperationModeChange, LOGLEVEL_INFO);
 			ESP.restart();
 		}
 	}
