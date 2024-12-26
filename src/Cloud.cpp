@@ -66,32 +66,20 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 		File file = gFSystem.open(temp, FILE_WRITE);
 
 		// ********************* DOWNLOAD PROCESS *********************
-		uint8_t *data = static_cast<uint8_t *>(x_malloc(CLOUD_DL_CHUNK_SIZE));
-
 		const size_t TOTAL_SIZE = http->getSize();
-		size_t downloadRemaining = TOTAL_SIZE;
 		Log_Println("Download START", LOGLEVEL_DEBUG);
 		Log_Printf(LOGLEVEL_DEBUG, "Total Size: %d", TOTAL_SIZE);
 
-		WiFiClient *stream = http->getStreamPtr();
 		auto start_ = millis();
-		size_t data_size;
-		while (downloadRemaining > 0 && http->connected()) {
-			data_size = stream->available();
-			if (data_size > 0) {
-				auto read_count = stream->read(data, ((data_size > CLOUD_DL_CHUNK_SIZE) ? CLOUD_DL_CHUNK_SIZE : data_size));
-				// If one chunk of data has been accumulated, write to SD card
-				if (read_count > 0) {
-					downloadRemaining -= read_count;
-					file.write(data, read_count);
-				}
-			}
-			vTaskDelay(1);
-		}
-
+		size_t data_size = http->writeToStream(&file);
+		Log_Printf(LOGLEVEL_DEBUG, "Downloaded Size: %d\n", data_size);
 		size_t time_ = (millis() - start_);
 		file.close();
 		Log_Println("Download END", LOGLEVEL_DEBUG);
+		Log_Printf(LOGLEVEL_DEBUG, "Rename: %s -> %s", temp, path);
+		if (gFSystem.exists(path)) {
+			gFSystem.remove(path);
+		}
 		gFSystem.rename(temp, path);
 		Log_Printf(LOGLEVEL_DEBUG, "Speed: %d bytes/sec\n", TOTAL_SIZE / time_ / 1000);
 		ret = true;
@@ -159,6 +147,9 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 			size_t time_ = (millis() - start_);
 			file.close();
 			Log_Println("Download END", LOGLEVEL_DEBUG);
+			if (gFSystem.exists(path)) {
+				gFSystem.remove(path);
+			}
 			gFSystem.rename(temp, path);
 			Log_Printf(LOGLEVEL_DEBUG, "Speed: %d bytes/sec\n", TOTAL_SIZE / time_ / 1000);
 			ret = true;
@@ -282,7 +273,7 @@ bool Cloud_Scan(const char *rfidId) {
 					Command = lineh.substring(5).toInt();
 				} else {
 					if (lineh.startsWith("#DL-FILE:")) {
-						char *line = x_strdup(lineh.substring(8).c_str());
+						char *line = x_strdup(lineh.substring(9).c_str());
 						dirName = strsep(&line, ";");
 						fileName = strsep(&line, ";");
 						fileSizeStr = strsep(&line, ";");
@@ -294,15 +285,15 @@ bool Cloud_Scan(const char *rfidId) {
 							gFSystem.mkdir(dirName);
 						}
 						bool mustDl = true;
-						if (fileSize > 0 && gFSystem.exists(dirName + fileName)) {
-							File rf = gFSystem.open(dirName + fileName);
+						if (fileSize > 0 && gFSystem.exists(dirName + DirDelim + fileName)) {
+							File rf = gFSystem.open(dirName + DirDelim + fileName);
 							mustDl = rf.size() != fileSize;
 							rf.close();
 						}
 
 						if (mustDl) {
-							String line = String(buf) + ";*;" + dirName + fileName + ";" + line;
-							Log_Printf(LOGLEVEL_INFO, "DL-Queueing: %s", line);
+							String line = String(buf) + ";*;" + dirName + DirDelim + fileName + ";" + lineh;
+							Log_Printf(LOGLEVEL_INFO, "DL-Queueing: %s", line.c_str());
 							if (std::find(dlList.begin(), dlList.end(), line.c_str()) == dlList.end()) {
 								Cloud_allocAndSave(&dlList, line);
 							}
