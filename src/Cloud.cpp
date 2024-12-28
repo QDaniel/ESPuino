@@ -15,15 +15,17 @@
 #include <deque>
 #include <stdint.h>
 
-struct SpiRamCAllocator {
-	void *allocate(size_t size) {
+struct SpiRamCAllocator : ArduinoJson::Allocator {
+	void *allocate(size_t size) override {
 		return ps_malloc(size);
 	}
-	void deallocate(void *pointer) {
+	void deallocate(void *pointer) override {
 		free(pointer);
 	}
+	void *reallocate(void *ptr, size_t new_size) override {
+		return ps_realloc(ptr, new_size);
+	}
 };
-using SpiRamJsonDocument = BasicJsonDocument<SpiRamCAllocator>;
 
 #ifdef CLOUD_INFO_URL
 
@@ -340,12 +342,13 @@ bool Cloud_Scan(const char *rfidId) {
 #ifdef CLOUD_STAT_URL
 
 JsonObject Cloud_BuildStatus(void) {
-
 	#ifdef BOARD_HAS_PSRAM
-	SpiRamJsonDocument doc(1024);
+	SpiRamCAllocator allocator;
+	JsonDocument doc(&allocator);
 	#else
-	StaticJsonDocument<1024> doc;
+	JsonDocument doc;
 	#endif
+
 	JsonObject object = doc.to<JsonObject>();
 	object["rfidId"] = gCurrentRfidTagId;
 	object["rssi"] = Wlan_GetRssi();
