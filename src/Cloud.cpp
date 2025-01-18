@@ -145,6 +145,7 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 				}
 				vTaskDelay(1);
 			}
+			free(data);
 
 			size_t time_ = (millis() - start_);
 			file.close();
@@ -340,14 +341,14 @@ bool Cloud_Scan(const char *rfidId) {
 #endif
 
 #ifdef CLOUD_STAT_URL
+	#ifdef BOARD_HAS_PSRAM
+SpiRamCAllocator allocator;
+JsonDocument doc(&allocator);
+	#else
+JsonDocument doc;
+	#endif
 
 JsonObject Cloud_BuildStatus(void) {
-	#ifdef BOARD_HAS_PSRAM
-	SpiRamCAllocator allocator;
-	JsonDocument doc(&allocator);
-	#else
-	JsonDocument doc;
-	#endif
 
 	JsonObject object = doc.to<JsonObject>();
 	object["rfidId"] = gCurrentRfidTagId;
@@ -379,6 +380,7 @@ void Cloud_SendStatusInfo(void) {
 	httpClSc.addHeader("X-Ident", Wlan_GetMacAddress());
 	httpClSc.addHeader("Content-Type", "application/json");
 	httpClSc.POST(buf, l);
+	free(buf);
 }
 
 #else
