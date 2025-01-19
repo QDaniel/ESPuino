@@ -64,6 +64,7 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 	int httpCode = http->GET();
 	Log_Printf(LOGLEVEL_INFO, "http result: %d", httpCode);
 
+	ret = false;
 	if (httpCode == 200) {
 		File file = gFSystem.open(temp, FILE_WRITE);
 
@@ -85,9 +86,10 @@ bool DownloadFile(HTTPClient *http, const char *uri, const char *path, const cha
 		gFSystem.rename(temp, path);
 		Log_Printf(LOGLEVEL_DEBUG, "Speed: %d bytes/sec\n", TOTAL_SIZE / time_ / 1000);
 		ret = true;
-	} else {
-		Log_Printf(LOGLEVEL_INFO, "HTTP Failed, Status: %d\n", httpCode);
-		ret = false;
+	} else if (httpCode < 0) {
+		Log_Printf(LOGLEVEL_ERROR, "HTTP Failed, Status: %d - %st\n", httpCode, HTTPClient::errorToString(httpCode).c_str());
+	} else if (httpCode > 400) {
+		Log_Printf(LOGLEVEL_ERROR, "HTTP Failed, Status: %d\n", httpCode);
 	}
 	http->end();
 	return ret;
@@ -111,7 +113,7 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 
 	int httpCode = http->GET();
 	Log_Printf(LOGLEVEL_INFO, "http result: %d", httpCode);
-
+	ret = false;
 	if (httpCode == 200) {
 		String etagStr = http->header("ETag");
 		Log_Printf(LOGLEVEL_DEBUG, "ETag: %s", etagStr.c_str());
@@ -157,9 +159,10 @@ bool DownloadFileM3U(HTTPClient *http, const char *uri, const char *path, const 
 			Log_Printf(LOGLEVEL_DEBUG, "Speed: %d bytes/sec\n", TOTAL_SIZE / time_ / 1000);
 			ret = true;
 		}
-	} else {
-		Log_Printf(LOGLEVEL_INFO, "HTTP Failed, Status: %d\n", httpCode);
-		ret = false;
+	} else if (httpCode < 0) {
+		Log_Printf(LOGLEVEL_ERROR, "HTTP Failed, Status: %d - %st\n", httpCode, HTTPClient::errorToString(httpCode).c_str());
+	} else if (httpCode > 400) {
+		Log_Printf(LOGLEVEL_ERROR, "HTTP Failed, Status: %d\n", httpCode);
 	}
 	http->end();
 	return ret;
